@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 12% 16%;
 
-    --primary: 349 100% 61%;
+    --primary: 358 85% 52%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 24 44% 93%;
@@ -24,15 +24,15 @@
     --muted: 24 33% 94%;
     --muted-foreground: 220 8% 42%;
 
-    --accent: 350 100% 97%;
-    --accent-foreground: 344 72% 30%;
+    --accent: 358 100% 97%;
+    --accent-foreground: 358 72% 30%;
 
     --destructive: 0 84% 58%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 23 23% 86%;
     --input: 23 23% 86%;
-    --ring: 349 100% 61%;
+    --ring: 358 85% 52%;
 
     --radius: 1rem;
 
@@ -43,12 +43,12 @@
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 12% 16%;
-    --sidebar-primary: 349 100% 61%;
+    --sidebar-primary: 358 85% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 24 44% 93%;
     --sidebar-accent-foreground: 220 12% 16%;
     --sidebar-border: 23 23% 86%;
-    --sidebar-ring: 349 100% 61%;
+    --sidebar-ring: 358 85% 52%;
   }
 
   .dark {
@@ -61,7 +61,7 @@
     --popover: 224 20% 13%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 349 95% 63%;
+    --primary: 358 85% 52%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 222 16% 18%;
@@ -70,15 +70,15 @@
     --muted: 222 16% 18%;
     --muted-foreground: 215 20% 68%;
 
-    --accent: 350 30% 22%;
-    --accent-foreground: 350 86% 86%;
+    --accent: 358 30% 22%;
+    --accent-foreground: 358 86% 86%;
 
     --destructive: 0 72% 46%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 222 14% 26%;
     --input: 222 14% 26%;
-    --ring: 349 95% 63%;
+    --ring: 358 85% 52%;
 
     --warning: 38 91% 56%;
     --warning-foreground: 222 47% 15%;
@@ -87,12 +87,12 @@
 
     --sidebar-background: 224 20% 13%;
     --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 349 95% 63%;
+    --sidebar-primary: 358 85% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 16% 18%;
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 222 14% 26%;
-    --sidebar-ring: 349 95% 63%;
+    --sidebar-ring: 358 85% 52%;
   }
 }
 
@@ -110,7 +110,7 @@
   body {
     @apply text-foreground font-sans antialiased;
     background:
-      radial-gradient(circle at 8% 2%, hsl(350 100% 96%) 0%, transparent 35%),
+      radial-gradient(circle at 8% 2%, hsl(358 100% 96%) 0%, transparent 35%),
       radial-gradient(circle at 92% 0%, hsl(31 100% 93%) 0%, transparent 30%),
       hsl(var(--background));
     font-family: 'Nunito Sans', 'Avenir Next', 'Segoe UI', sans-serif;
