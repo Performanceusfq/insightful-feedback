@@ -14,6 +14,8 @@ import QuestionBankPage from "@/pages/admin/QuestionBankPage";
 import SurveyConfigPage from "@/pages/admin/SurveyConfigPage";
 import EventConfigPage from "@/pages/admin/EventConfigPage";
 import EventosQRPage from "@/pages/profesor/EventosQRPage";
+import EstudianteDashboard from "@/pages/estudiante/EstudianteDashboard";
+import SurveyResponsePage from "@/pages/estudiante/SurveyResponsePage";
 import PlaceholderPage from "@/pages/placeholder/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -43,8 +45,9 @@ const App = () => (
               <Route path="/profesor/clases" element={<PlaceholderPage title="Mis Clases" description="Sprint 3" />} />
               <Route path="/profesor/eventos" element={<EventosQRPage />} />
               {/* Estudiante */}
-              <Route path="/estudiante" element={<PlaceholderPage title="Inicio Estudiante" description="Sprint 4" />} />
-              <Route path="/estudiante/encuestas" element={<PlaceholderPage title="Encuestas" description="Sprint 4" />} />
+              <Route path="/estudiante" element={<EstudianteDashboard />} />
+              <Route path="/estudiante/encuesta/:token" element={<SurveyResponsePage />} />
+              <Route path="/estudiante/encuestas" element={<EstudianteDashboard />} />
               {/* Coordinador */}
               <Route path="/coordinador" element={<PlaceholderPage title="Dashboard Coordinador" description="Sprint 6" />} />
               <Route path="/coordinador/analitica" element={<PlaceholderPage title="Analítica de Departamento" description="Sprint 6" />} />
