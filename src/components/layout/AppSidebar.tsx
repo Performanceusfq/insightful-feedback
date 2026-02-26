@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { roleLabels } from '@/data/mock-data';
 import { AppRole } from '@/types/domain';
@@ -15,7 +16,6 @@ import {
   BarChart3,
   BrainCircuit,
   ChevronDown,
-  LogOut,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { mockUsers } from '@/data/mock-data';
 
-const roleIconMap: Record<AppRole, React.ReactNode> = {
+const roleIconMap: Record<AppRole, ReactNode> = {
   estudiante: <GraduationCap className="h-4 w-4" />,
   profesor: <BookOpen className="h-4 w-4" />,
   admin: <Settings className="h-4 w-4" />,
@@ -36,7 +36,7 @@ const roleIconMap: Record<AppRole, React.ReactNode> = {
 interface NavItem {
   label: string;
   to: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 function getNavItems(role: AppRole): NavItem[] {
@@ -82,22 +82,22 @@ export function AppSidebar() {
   const navItems = getNavItems(currentUser.activeRole);
 
   return (
-    <aside className="flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground">
+    <aside className="z-10 flex w-full flex-col border-b border-sidebar-border/80 bg-sidebar/90 px-3 py-3 text-sidebar-foreground backdrop-blur md:h-screen md:w-72 md:shrink-0 md:border-b-0 md:border-r md:px-4 md:py-5">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
+      <div className="flex items-center gap-3 rounded-2xl border border-sidebar-border/60 bg-card/70 px-3 py-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sidebar-primary shadow-[0_14px_24px_-16px_hsl(var(--sidebar-primary)/0.9)]">
           <GraduationCap className="h-5 w-5 text-sidebar-primary-foreground" />
         </div>
         <div>
-          <h1 className="font-display text-sm font-bold leading-tight">EvalDocente</h1>
-          <p className="text-xs opacity-70">Gestión del Desempeño</p>
+          <h1 className="font-display text-base font-extrabold leading-tight tracking-tight">EvalDocente</h1>
+          <p className="text-xs text-muted-foreground">Gestión del Desempeño</p>
         </div>
       </div>
 
       {/* Role selector */}
-      <div className="px-4 pb-2">
+      <div className="mt-3 px-1">
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg bg-sidebar-accent px-3 py-2 text-sm text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/80">
+          <DropdownMenuTrigger className="flex h-11 w-full items-center gap-2 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/60 px-3 text-sm font-semibold text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent">
             {roleIconMap[currentUser.activeRole]}
             <span className="flex-1 text-left">{roleLabels[currentUser.activeRole]}</span>
             <ChevronDown className="h-3 w-3 opacity-60" />
@@ -114,7 +114,7 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-2">
+      <nav className="grid flex-1 grid-cols-1 gap-1.5 px-1 py-3 sm:grid-cols-2 md:block md:space-y-1.5">
         {navItems.map(item => (
           <NavLink
             key={item.to}
@@ -122,10 +122,10 @@ export function AppSidebar() {
             end={item.to === '/admin' || item.to === '/profesor' || item.to === '/estudiante' || item.to === '/coordinador' || item.to === '/director'}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                'flex h-11 items-center gap-3 rounded-xl px-3 text-sm transition-all',
                 isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
-                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-[0_12px_30px_-18px_hsl(var(--sidebar-primary)/0.95)]'
+                  : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               )
             }
           >
@@ -136,14 +136,14 @@ export function AppSidebar() {
       </nav>
 
       {/* User switcher (dev only) */}
-      <div className="border-t border-sidebar-border px-4 py-3">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider opacity-50">Dev: cambiar usuario</p>
+      <div className="border-t border-sidebar-border/80 px-1 pt-3">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/80">Dev: cambiar usuario</p>
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-accent">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
+          <DropdownMenuTrigger className="flex h-11 w-full items-center gap-2 rounded-xl border border-sidebar-border/70 bg-card/70 px-3 text-sm transition-colors hover:bg-sidebar-accent/60">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
               {currentUser.name.charAt(0)}
             </div>
-            <span className="flex-1 truncate text-left text-xs">{currentUser.name}</span>
+            <span className="flex-1 truncate text-left text-xs font-semibold">{currentUser.name}</span>
             <ChevronDown className="h-3 w-3 opacity-60" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
