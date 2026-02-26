@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="EvalDocente">
+  <rect width="192" height="192" rx="8" fill="#C41B1E" />
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="12">
+    <path d="M24 78 96 44l72 34-72 34Z" />
+    <path d="M52 92v34c12 14 28 20 44 20s32-6 44-20V92" />
+    <path d="M168 78v36" />
+  </g>
+</svg>

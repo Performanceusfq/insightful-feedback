@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "system-ui", "sans-serif"],
+        sans: ["Roboto", "Calibri", "system-ui", "sans-serif"],
+        display: ["DIN Condensed", "Roboto Condensed", "Roboto", "sans-serif"],
+        serifBrand: ["Athelas", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
