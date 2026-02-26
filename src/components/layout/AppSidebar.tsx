@@ -47,6 +47,8 @@ function getNavItems(role: AppRole): NavItem[] {
         { label: 'Departamentos', to: '/admin/departamentos', icon: <Building2 className="h-4 w-4" /> },
         { label: 'Profesores', to: '/admin/profesores', icon: <Users className="h-4 w-4" /> },
         { label: 'Clases', to: '/admin/clases', icon: <BookOpen className="h-4 w-4" /> },
+        { label: 'Banco de Preguntas', to: '/admin/preguntas', icon: <FileQuestion className="h-4 w-4" /> },
+        { label: 'Encuestas', to: '/admin/encuestas', icon: <FileQuestion className="h-4 w-4" /> },
         { label: 'Roles', to: '/admin/roles', icon: <Settings className="h-4 w-4" /> },
       ];
     case 'profesor':
