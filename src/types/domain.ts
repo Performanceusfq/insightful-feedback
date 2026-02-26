@@ -81,3 +81,46 @@ export interface SurveyConfig {
   };
   active: boolean;
 }
+
+// Sprint 3 – Eventos de Clase & QR
+
+export type EventFrequency = 'per_class' | 'weekly' | 'biweekly' | 'monthly' | 'manual';
+
+export const eventFrequencyLabels: Record<EventFrequency, string> = {
+  per_class: 'Cada clase',
+  weekly: 'Semanal',
+  biweekly: 'Quincenal',
+  monthly: 'Mensual',
+  manual: 'Manual',
+};
+
+export type EventStatus = 'scheduled' | 'active' | 'expired' | 'cancelled';
+
+export const eventStatusLabels: Record<EventStatus, string> = {
+  scheduled: 'Programado',
+  active: 'Activo',
+  expired: 'Expirado',
+  cancelled: 'Cancelado',
+};
+
+export interface ClassEventConfig {
+  id: string;
+  courseId: string;
+  surveyConfigId: string;
+  frequency: EventFrequency;
+  expirationMinutes: number; // QR expiration time
+  scheduledDays: number[]; // 0=Sun ... 6=Sat
+  scheduledTime: string; // HH:mm
+  active: boolean;
+}
+
+export interface ClassEvent {
+  id: string;
+  configId: string;
+  courseId: string;
+  qrCode: string; // unique token for QR
+  status: EventStatus;
+  createdAt: string; // ISO timestamp
+  expiresAt: string; // ISO timestamp
+  responsesCount: number;
+}

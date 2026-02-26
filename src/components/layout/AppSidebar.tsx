@@ -49,6 +49,7 @@ function getNavItems(role: AppRole): NavItem[] {
         { label: 'Clases', to: '/admin/clases', icon: <BookOpen className="h-4 w-4" /> },
         { label: 'Banco de Preguntas', to: '/admin/preguntas', icon: <FileQuestion className="h-4 w-4" /> },
         { label: 'Encuestas', to: '/admin/encuestas', icon: <FileQuestion className="h-4 w-4" /> },
+        { label: 'Eventos', to: '/admin/eventos', icon: <QrCode className="h-4 w-4" /> },
         { label: 'Roles', to: '/admin/roles', icon: <Settings className="h-4 w-4" /> },
       ];
     case 'profesor':
