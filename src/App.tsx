@@ -10,6 +10,8 @@ import DepartmentsPage from "@/pages/admin/DepartmentsPage";
 import ProfessorsPage from "@/pages/admin/ProfessorsPage";
 import CoursesPage from "@/pages/admin/CoursesPage";
 import RolesPage from "@/pages/admin/RolesPage";
+import QuestionBankPage from "@/pages/admin/QuestionBankPage";
+import SurveyConfigPage from "@/pages/admin/SurveyConfigPage";
 import PlaceholderPage from "@/pages/placeholder/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +33,8 @@ const App = () => (
               <Route path="/admin/profesores" element={<ProfessorsPage />} />
               <Route path="/admin/clases" element={<CoursesPage />} />
               <Route path="/admin/roles" element={<RolesPage />} />
+              <Route path="/admin/preguntas" element={<QuestionBankPage />} />
+              <Route path="/admin/encuestas" element={<SurveyConfigPage />} />
               {/* Profesor */}
               <Route path="/profesor" element={<PlaceholderPage title="Dashboard del Profesor" description="Sprint 5" />} />
               <Route path="/profesor/clases" element={<PlaceholderPage title="Mis Clases" description="Sprint 3" />} />

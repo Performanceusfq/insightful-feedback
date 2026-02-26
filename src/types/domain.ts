@@ -38,3 +38,46 @@ export interface UserRole {
   userId: string;
   role: AppRole;
 }
+
+// Sprint 2 – Banco de Preguntas
+
+export type QuestionType = 'likert' | 'open' | 'multiple_choice';
+
+export type QuestionCategory = 'pedagogia' | 'contenido' | 'evaluacion' | 'comunicacion' | 'general';
+
+export const questionTypeLabels: Record<QuestionType, string> = {
+  likert: 'Escala Likert',
+  open: 'Respuesta Abierta',
+  multiple_choice: 'Opción Múltiple',
+};
+
+export const questionCategoryLabels: Record<QuestionCategory, string> = {
+  pedagogia: 'Pedagogía',
+  contenido: 'Contenido',
+  evaluacion: 'Evaluación',
+  comunicacion: 'Comunicación',
+  general: 'General',
+};
+
+export interface Question {
+  id: string;
+  text: string;
+  type: QuestionType;
+  category: QuestionCategory;
+  options?: string[]; // for multiple_choice
+  likertScale?: number; // default 5
+  required: boolean;
+  active: boolean;
+}
+
+export interface SurveyConfig {
+  id: string;
+  courseId: string;
+  name: string;
+  fixedQuestionIds: string[];
+  randomPool: {
+    questionIds: string[];
+    count: number; // how many random questions to pick
+  };
+  active: boolean;
+}
