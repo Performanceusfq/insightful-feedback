@@ -21,6 +21,7 @@ import CoordinadorDashboard from "@/pages/coordinador/CoordinadorDashboard";
 import CoordinadorAnaliticaPage from "@/pages/coordinador/CoordinadorAnaliticaPage";
 import DirectorDashboard from "@/pages/director/DirectorDashboard";
 import DirectorAnaliticaPage from "@/pages/director/DirectorAnaliticaPage";
+import DirectorInsightsPage from "@/pages/director/DirectorInsightsPage";
 import PlaceholderPage from "@/pages/placeholder/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -59,7 +60,7 @@ const App = () => (
               {/* Director */}
               <Route path="/director" element={<DirectorDashboard />} />
               <Route path="/director/analitica" element={<DirectorAnaliticaPage />} />
-              <Route path="/director/insights" element={<PlaceholderPage title="Insights IA" description="Sprint 7" />} />
+              <Route path="/director/insights" element={<DirectorInsightsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
