@@ -17,6 +17,10 @@ import EventosQRPage from "@/pages/profesor/EventosQRPage";
 import ProfesorDashboard from "@/pages/profesor/ProfesorDashboard";
 import EstudianteDashboard from "@/pages/estudiante/EstudianteDashboard";
 import SurveyResponsePage from "@/pages/estudiante/SurveyResponsePage";
+import CoordinadorDashboard from "@/pages/coordinador/CoordinadorDashboard";
+import CoordinadorAnaliticaPage from "@/pages/coordinador/CoordinadorAnaliticaPage";
+import DirectorDashboard from "@/pages/director/DirectorDashboard";
+import DirectorAnaliticaPage from "@/pages/director/DirectorAnaliticaPage";
 import PlaceholderPage from "@/pages/placeholder/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -50,11 +54,11 @@ const App = () => (
               <Route path="/estudiante/encuesta/:token" element={<SurveyResponsePage />} />
               <Route path="/estudiante/encuestas" element={<EstudianteDashboard />} />
               {/* Coordinador */}
-              <Route path="/coordinador" element={<PlaceholderPage title="Dashboard Coordinador" description="Sprint 6" />} />
-              <Route path="/coordinador/analitica" element={<PlaceholderPage title="Analítica de Departamento" description="Sprint 6" />} />
+              <Route path="/coordinador" element={<CoordinadorDashboard />} />
+              <Route path="/coordinador/analitica" element={<CoordinadorAnaliticaPage />} />
               {/* Director */}
-              <Route path="/director" element={<PlaceholderPage title="Dashboard Director" description="Sprint 6" />} />
-              <Route path="/director/analitica" element={<PlaceholderPage title="Analítica Institucional" description="Sprint 6" />} />
+              <Route path="/director" element={<DirectorDashboard />} />
+              <Route path="/director/analitica" element={<DirectorAnaliticaPage />} />
               <Route path="/director/insights" element={<PlaceholderPage title="Insights IA" description="Sprint 7" />} />
             </Route>
             <Route path="*" element={<NotFound />} />
