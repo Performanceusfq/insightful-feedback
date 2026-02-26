@@ -14,6 +14,7 @@ import QuestionBankPage from "@/pages/admin/QuestionBankPage";
 import SurveyConfigPage from "@/pages/admin/SurveyConfigPage";
 import EventConfigPage from "@/pages/admin/EventConfigPage";
 import EventosQRPage from "@/pages/profesor/EventosQRPage";
+import ProfesorDashboard from "@/pages/profesor/ProfesorDashboard";
 import EstudianteDashboard from "@/pages/estudiante/EstudianteDashboard";
 import SurveyResponsePage from "@/pages/estudiante/SurveyResponsePage";
 import PlaceholderPage from "@/pages/placeholder/PlaceholderPage";
@@ -41,7 +42,7 @@ const App = () => (
               <Route path="/admin/encuestas" element={<SurveyConfigPage />} />
               <Route path="/admin/eventos" element={<EventConfigPage />} />
               {/* Profesor */}
-              <Route path="/profesor" element={<PlaceholderPage title="Dashboard del Profesor" description="Sprint 5" />} />
+              <Route path="/profesor" element={<ProfesorDashboard />} />
               <Route path="/profesor/clases" element={<PlaceholderPage title="Mis Clases" description="Sprint 3" />} />
               <Route path="/profesor/eventos" element={<EventosQRPage />} />
               {/* Estudiante */}
