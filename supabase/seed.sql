@@ -1,0 +1,2 @@
+-- Optional local seed data for development only.
+-- Keep this file minimal for now; add fixtures when needed.
