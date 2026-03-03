@@ -48,3 +48,27 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Supabase setup (initial connection)
+
+1. Create your local environment file:
+
+```sh
+cp .env.example .env.local
+```
+
+2. Add your Supabase project values in `.env.local`:
+
+```env
+VITE_SUPABASE_URL=your_project_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+```
+
+3. Start the app:
+
+```sh
+npm run dev
+```
+
+4. Open browser devtools console and verify one of these logs:
+- Success: `[Supabase smoke test] getSession ok`
+- Error: `[Supabase smoke test] getSession error: ...`
