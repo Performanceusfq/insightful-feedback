@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
 import {
   createProfessorAccount,
@@ -39,6 +40,7 @@ const defaultFormState: ProfessorFormState = {
 };
 
 export default function ProfessorsPage() {
+  const { session } = useAuth();
   const queryClient = useQueryClient();
   const [formState, setFormState] = useState<ProfessorFormState>(defaultFormState);
   const [open, setOpen] = useState(false);
@@ -154,12 +156,18 @@ export default function ProfessorsPage() {
       return;
     }
 
+    if (!session?.access_token) {
+      toast.error('Tu sesión expiró. Vuelve a iniciar sesión.');
+      return;
+    }
+
     createMutation.mutate({
       name,
       email,
       password,
       departmentId,
       keepStudentRole: formState.keepStudentRole,
+      accessToken: session.access_token,
     });
   };
 

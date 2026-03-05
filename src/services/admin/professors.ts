@@ -1,8 +1,3 @@
-import {
-  FunctionsFetchError,
-  FunctionsHttpError,
-  FunctionsRelayError,
-} from '@supabase/supabase-js';
 import { AppError } from '@/lib/app-errors';
 import { supabase } from '@/lib/supabase';
 import { requireAdminRole } from '@/services/auth/guards';
@@ -33,6 +28,7 @@ export interface CreateProfessorAccountInput {
   password: string;
   departmentId: string;
   keepStudentRole: boolean;
+  accessToken?: string;
 }
 
 export interface UpdateProfessorInput {
@@ -138,66 +134,105 @@ export async function fetchProfessorsPageData(): Promise<ProfessorsPageData> {
   };
 }
 
-async function getFunctionErrorMessage(error: FunctionsHttpError): Promise<string> {
-  try {
-    const payload = await error.context.json() as { error?: string; message?: string };
-    return payload.error ?? payload.message ?? error.message;
-  } catch {
-    return error.message;
-  }
-}
-
 export async function createProfessorAccount(input: CreateProfessorAccountInput): Promise<ProfessorRecord> {
-  await requireAdminRole();
-
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   const password = input.password;
   const departmentId = input.departmentId;
   const keepStudentRole = input.keepStudentRole;
+  const preferredAccessToken = input.accessToken?.trim() ?? '';
 
   if (!name || !email || !password || !departmentId) {
     throw new Error('Todos los campos son requeridos.');
   }
 
-  const { data, error } = await supabase.functions.invoke('admin-professors-create', {
-    body: {
-      name,
-      email,
-      password,
-      departmentId,
-      keepStudentRole,
-    },
-  });
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-  if (error instanceof FunctionsHttpError) {
-    const status = error.context.status;
-    const message = await getFunctionErrorMessage(error);
+  if (sessionError) {
+    throw new Error('No se pudo validar tu sesión actual.');
+  }
 
-    if (status === 400) {
+  const sessionAccessToken = session?.access_token?.trim() ?? '';
+  const accessTokenCandidates = [sessionAccessToken, preferredAccessToken].filter((token, index, array) => (
+    Boolean(token) && array.indexOf(token) === index
+  ));
+
+  if (accessTokenCandidates.length === 0) {
+    throw new AppError('AUTH_REQUIRED', 'Debes iniciar sesión para realizar esta acción.');
+  }
+
+  let accessToken: string | null = null;
+
+  for (const tokenCandidate of accessTokenCandidates) {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(tokenCandidate);
+
+    if (!userError && user) {
+      accessToken = tokenCandidate;
+      break;
+    }
+  }
+
+  if (!accessToken) {
+    throw new AppError('AUTH_REQUIRED', 'Tu sesión no es válida. Cierra sesión e inicia nuevamente.');
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error('Falta configuración de Supabase en el cliente.');
+  }
+
+  const endpoint = `${supabaseUrl}/functions/v1/admin-professors-create`;
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        departmentId,
+        keepStudentRole,
+      }),
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el servicio de creación de profesores.');
+  }
+
+  const payload = await response.json().catch(() => null) as { error?: string; message?: string } | null;
+  const message = payload?.error ?? payload?.message ?? '';
+
+  if (!response.ok) {
+    if (response.status === 400) {
       throw new Error(message || 'Datos inválidos para crear el profesor.');
     }
 
-    if (status === 403) {
-      throw new AppError('FORBIDDEN', 'No tienes permisos para realizar esta acción.');
+    if (response.status === 401) {
+      throw new AppError('AUTH_REQUIRED', message || 'Debes iniciar sesión para realizar esta acción.');
     }
 
-    if (status === 409) {
+    if (response.status === 403) {
+      throw new AppError('FORBIDDEN', message || 'No tienes permisos para realizar esta acción.');
+    }
+
+    if (response.status === 409) {
       throw new Error('Ya existe un usuario con ese correo.');
     }
 
     throw new Error(message || 'No se pudo crear el profesor.');
   }
 
-  if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
-    throw new Error('No se pudo conectar con el servicio de creación de profesores.');
-  }
-
-  if (error) {
-    throw error;
-  }
-
-  const created = data as {
+  const created = payload as {
     professorId: string;
     userId: string;
     name: string;

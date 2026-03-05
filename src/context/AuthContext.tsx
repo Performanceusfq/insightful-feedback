@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { type Session } from '@supabase/supabase-js';
 import { type AppRole, type User } from '@/types/domain';
 import { supabase } from '@/lib/supabase';
@@ -36,11 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const sessionResolutionIdRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
 
     const resolveSessionUser = async (nextSession: Session | null) => {
+      const resolutionId = ++sessionResolutionIdRef.current;
+
       if (!isMounted) {
         return;
       }
@@ -53,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      setIsAuthLoading(true);
+
       const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }] = await Promise.all([
         supabase
           .from('profiles')
@@ -62,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supabase.from('user_roles').select('role').eq('user_id', nextSession.user.id),
       ]);
 
-      if (!isMounted) {
+      if (!isMounted || resolutionId !== sessionResolutionIdRef.current) {
         return;
       }
 
