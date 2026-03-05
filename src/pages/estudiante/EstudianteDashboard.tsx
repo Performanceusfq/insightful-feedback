@@ -2,27 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { useAuth } from '@/context/AuthContext';
-import { mockEvents } from '@/data/mock-events';
-import { mockEventConfigs } from '@/data/mock-events';
-import { mockSurveyConfigs } from '@/data/mock-questions';
-import { mockCourses } from '@/data/mock-data';
-import { hasStudentResponded } from '@/data/mock-responses';
-import { eventStatusLabels } from '@/types/domain';
+import { useStudentActiveEvents } from '@/hooks/useStudentActiveEvents';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { QrCode, FileQuestion, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
+import { QrCode, FileQuestion, CheckCircle2, Clock, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function EstudianteDashboard() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [manualCode, setManualCode] = useState('');
-
-  const activeEvents = mockEvents.filter(e => {
-    if (e.status !== 'active') return false;
-    return new Date(e.expiresAt).getTime() > Date.now();
-  });
+  const { data: activeEvents = [], isLoading, isError } = useStudentActiveEvents(currentUser?.id);
 
   const handleManualCode = () => {
     if (manualCode.trim()) {
@@ -33,7 +24,7 @@ export default function EstudianteDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Hola, ${currentUser.name.split(' ')[0]}`}
+        title={`Hola, ${(currentUser?.name ?? 'Usuario').split(' ')[0]}`}
         description="Responde las encuestas activas para evaluar a tus profesores."
       />
 
@@ -64,7 +55,21 @@ export default function EstudianteDashboard() {
         <h3 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           Encuestas Activas
         </h3>
-        {activeEvents.length === 0 ? (
+        {isLoading ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <Loader2 className="mx-auto mb-2 h-10 w-10 animate-spin text-muted-foreground/60" />
+              <p className="text-sm text-muted-foreground">Cargando encuestas activas...</p>
+            </CardContent>
+          </Card>
+        ) : isError ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <FileQuestion className="mx-auto mb-2 h-10 w-10 text-destructive/60" />
+              <p className="text-sm text-muted-foreground">No se pudo cargar tus encuestas activas.</p>
+            </CardContent>
+          </Card>
+        ) : activeEvents.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center">
               <FileQuestion className="mx-auto mb-2 h-10 w-10 text-muted-foreground/40" />
@@ -74,15 +79,14 @@ export default function EstudianteDashboard() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {activeEvents.map(event => {
-              const course = mockCourses.find(c => c.id === event.courseId);
-              const responded = hasStudentResponded(currentUser.id, event.id);
+              const responded = event.responded;
               return (
                 <Card key={event.id} className={responded ? 'opacity-60' : ''}>
                   <CardContent className="pt-5">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-medium text-sm">{course?.name ?? 'Clase'}</p>
-                        <p className="text-xs text-muted-foreground">{course?.code}</p>
+                        <p className="font-medium text-sm">{event.courseName}</p>
+                        <p className="text-xs text-muted-foreground">{event.courseCode}</p>
                       </div>
                       {responded ? (
                         <Badge variant="secondary"><CheckCircle2 className="mr-1 h-3 w-3" /> Respondida</Badge>

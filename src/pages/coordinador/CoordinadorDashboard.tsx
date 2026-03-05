@@ -32,7 +32,7 @@ export default function CoordinadorDashboard() {
   const { currentUser } = useAuth();
 
   // Get coordinator's department
-  const myDept = mockDepartments.find(d => d.id === currentUser.departmentId) ?? mockDepartments[0];
+  const myDept = mockDepartments.find(d => d.id === currentUser?.departmentId) ?? mockDepartments[0];
   const deptSummary = mockDepartmentSummaries.find(s => s.departmentId === myDept.id) ?? mockDepartmentSummaries[0];
   const deptProfessors = mockProfessorRankings
     .filter(p => p.departmentId === myDept.id)
@@ -58,7 +58,7 @@ export default function CoordinadorDashboard() {
   const profRadarData = useMemo(() => {
     const cats: QuestionCategory[] = ['pedagogia', 'contenido', 'evaluacion', 'comunicacion', 'general'];
     return cats.map(cat => {
-      const point: Record<string, any> = { category: questionCategoryLabels[cat] };
+      const point: Record<string, string | number> = { category: questionCategoryLabels[cat] };
       deptProfessors.forEach(p => {
         point[p.professorName.split(' ').slice(-1)[0]] = p.categoryScores[cat];
       });

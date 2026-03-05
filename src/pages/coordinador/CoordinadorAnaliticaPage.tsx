@@ -26,7 +26,7 @@ const trendIcon = (t: 'up' | 'down' | 'stable') => {
 
 export default function CoordinadorAnaliticaPage() {
   const { currentUser } = useAuth();
-  const myDept = mockDepartments.find(d => d.id === currentUser.departmentId) ?? mockDepartments[0];
+  const myDept = mockDepartments.find(d => d.id === currentUser?.departmentId) ?? mockDepartments[0];
   const professors = mockProfessorRankings
     .filter(p => p.departmentId === myDept.id)
     .sort((a, b) => b.avgScore - a.avgScore);

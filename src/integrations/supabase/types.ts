@@ -108,6 +108,39 @@ export type Database = {
           },
         ]
       }
+      course_enrollments: {
+        Row: {
+          course_id: string
+          created_at: string
+          student_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          student_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           code: string
@@ -399,18 +432,21 @@ export type Database = {
           answers: Json
           event_id: string
           id: string
+          respondent_hash: string | null
           submitted_at: string
         }
         Insert: {
           answers: Json
           event_id: string
           id?: string
+          respondent_hash?: string | null
           submitted_at?: string
         }
         Update: {
           answers?: Json
           event_id?: string
           id?: string
+          respondent_hash?: string | null
           submitted_at?: string
         }
         Relationships: [
@@ -561,6 +597,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_professor: {
+        Args: {
+          p_professor_id: string
+          p_replacement_professor_id?: string | null
+        }
+        Returns: Json
+      }
       can_manage_course: { Args: { p_course_id: string }; Returns: boolean }
       generate_class_event: {
         Args: { p_course_id: string }
@@ -572,6 +615,17 @@ export type Database = {
         }[]
       }
       generate_unique_qr_code: { Args: never; Returns: string }
+      get_event_survey_by_qr: {
+        Args: { p_qr_code: string }
+        Returns: {
+          course_name: string
+          event_id: string
+          expires_at: string
+          questions: Json
+          status: string
+          survey_name: string
+        }[]
+      }
       has_role: {
         Args: { p_role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean

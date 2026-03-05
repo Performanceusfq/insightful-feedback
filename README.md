@@ -72,3 +72,31 @@ npm run dev
 4. Open browser devtools console and verify one of these logs:
 - Success: `[Supabase smoke test] getSession ok`
 - Error: `[Supabase smoke test] getSession error: ...`
+
+## Auth de producción y bootstrap de admin
+
+Este frontend usa autenticación real de Supabase (`email+password`) y las escrituras protegidas dependen de RLS + `auth.uid()`.
+
+### 1) Crear primer usuario admin
+
+1. Crea el usuario en Supabase Auth.
+2. Ejecuta este SQL en el proyecto:
+
+```sql
+insert into public.user_roles (user_id, role)
+select p.id, 'admin'::public.app_role
+from public.profiles p
+where p.email = 'admin@tu-dominio.com'
+on conflict (user_id, role) do nothing;
+
+update public.profiles
+set active_role = 'admin'
+where email = 'admin@tu-dominio.com';
+```
+
+### 2) Configuración recomendada de Auth en producción
+
+- Desactivar registro público (`enable_signup = false`).
+- Mantener método inicial `email+password`.
+- Gestionar altas por invitación/admin.
+- No usar `service_role` en frontend.

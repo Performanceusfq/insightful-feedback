@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { roleLabels } from '@/data/mock-data';
-import { AppRole } from '@/types/domain';
 import { NavLink } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 import {
   GraduationCap,
   BookOpen,
@@ -16,14 +12,19 @@ import {
   BarChart3,
   BrainCircuit,
   ChevronDown,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { roleLabels } from '@/data/mock-data';
+import { AppRole } from '@/types/domain';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockUsers } from '@/data/mock-data';
+import { Separator } from '@/components/ui/separator';
 
 const roleIconMap: Record<AppRole, ReactNode> = {
   estudiante: <GraduationCap className="h-4 w-4" />,
@@ -78,12 +79,16 @@ function getNavItems(role: AppRole): NavItem[] {
 }
 
 export function AppSidebar() {
-  const { currentUser, switchRole, switchUser } = useAuth();
+  const { currentUser, switchRole, signOut } = useAuth();
+
+  if (!currentUser) {
+    return null;
+  }
+
   const navItems = getNavItems(currentUser.activeRole);
 
   return (
     <aside className="z-10 flex w-full flex-col border-b border-sidebar-border/80 bg-sidebar/90 px-3 py-3 text-sidebar-foreground backdrop-blur md:h-screen md:w-72 md:shrink-0 md:border-b-0 md:border-r md:px-4 md:py-5">
-      {/* Logo */}
       <div className="flex items-center gap-3 rounded-2xl border border-sidebar-border/60 bg-card/70 px-3 py-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sidebar-primary shadow-[0_14px_24px_-16px_hsl(var(--sidebar-primary)/0.9)]">
           <GraduationCap className="h-5 w-5 text-sidebar-primary-foreground" />
@@ -94,7 +99,6 @@ export function AppSidebar() {
         </div>
       </div>
 
-      {/* Role selector */}
       <div className="mt-3 px-1">
         <DropdownMenu>
           <DropdownMenuTrigger className="flex h-11 w-full items-center gap-2 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/60 px-3 text-sm font-semibold text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent">
@@ -103,7 +107,7 @@ export function AppSidebar() {
             <ChevronDown className="h-3 w-3 opacity-60" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
-            {currentUser.roles.map(role => (
+            {currentUser.roles.map((role) => (
               <DropdownMenuItem key={role} onClick={() => switchRole(role)}>
                 {roleIconMap[role]}
                 <span className="ml-2">{roleLabels[role]}</span>
@@ -113,9 +117,8 @@ export function AppSidebar() {
         </DropdownMenu>
       </div>
 
-      {/* Navigation */}
       <nav className="grid flex-1 grid-cols-1 gap-1.5 px-1 py-3 sm:grid-cols-2 md:block md:space-y-1.5">
-        {navItems.map(item => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -135,27 +138,22 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      {/* User switcher (dev only) */}
       <div className="border-t border-sidebar-border/80 px-1 pt-3">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/80">Dev: cambiar usuario</p>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex h-11 w-full items-center gap-2 rounded-xl border border-sidebar-border/70 bg-card/70 px-3 text-sm transition-colors hover:bg-sidebar-accent/60">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
-              {currentUser.name.charAt(0)}
-            </div>
-            <span className="flex-1 truncate text-left text-xs font-semibold">{currentUser.name}</span>
-            <ChevronDown className="h-3 w-3 opacity-60" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            {mockUsers.map(user => (
-              <DropdownMenuItem key={user.id} onClick={() => switchUser(user.id)}>
-                <span className="mr-2 text-xs">{roleIconMap[user.activeRole]}</span>
-                <span className="flex-1 truncate">{user.name}</span>
-                <span className="text-xs text-muted-foreground">{roleLabels[user.activeRole]}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="space-y-2">
+          <div className="rounded-xl border border-sidebar-border/70 bg-card/70 px-3 py-2">
+            <p className="truncate text-xs font-semibold">{currentUser.name}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{currentUser.email}</p>
+          </div>
+          <Separator className="bg-sidebar-border/70" />
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex h-10 w-full items-center gap-2 rounded-xl border border-sidebar-border/70 px-3 text-xs font-semibold text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar sesión
+          </button>
+        </div>
       </div>
     </aside>
   );

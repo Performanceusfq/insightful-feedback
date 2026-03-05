@@ -28,8 +28,7 @@ const COLORS = [
 export default function ProfesorDashboard() {
   const { currentUser } = useAuth();
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
-
-  const professor = mockProfessors.find(p => p.userId === currentUser.id);
+  const professor = mockProfessors.find(p => p.userId === currentUser?.id);
   const myCourses = useMemo(
     () => professor ? mockCourses.filter(c => c.professorId === professor.id) : mockCourses.slice(0, 2),
     [professor],
@@ -100,7 +99,7 @@ export default function ProfesorDashboard() {
     // Take longest series as base
     const longest = filteredTrends.reduce((a, b) => a.data.length >= b.data.length ? a : b);
     return longest.data.map((d, i) => {
-      const point: Record<string, any> = { week: d.week };
+      const point: Record<string, string | number | null> = { week: d.week };
       filteredTrends.forEach(t => {
         const courseName = mockCourses.find(c => c.id === t.courseId)?.code ?? t.courseId;
         point[courseName] = t.data[i]?.avgScore ?? null;
