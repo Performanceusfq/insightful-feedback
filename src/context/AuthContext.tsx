@@ -8,6 +8,7 @@ interface AuthContextType {
   session: Session | null;
   switchRole: (role: AppRole) => void;
   signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithMicrosoft: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthLoading: boolean;
 }
@@ -54,6 +55,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
         setIsAuthLoading(false);
         return;
+      }
+
+      // DOMAIN RESTRICTION CHECK FOR @asig
+      if (nextSession.user.app_metadata?.provider === 'azure') {
+        const userEmail = nextSession.user.email?.toLowerCase() || '';
+
+        // DOMAIN RESTRICTION CHECK FOR @asig
+        const isTestModeAllowed = import.meta.env.VITE_ALLOW_NON_ASIG_EMAILS === 'true';
+
+        // Check if the email contains '@asig' 
+        // We use a robust check in case they are @asig.edu.ec or similar. 
+        if (!isTestModeAllowed && !userEmail.includes('@asig')) {
+          console.warn(`[AuthContext] Denied access to non-@asig account: ${userEmail}`);
+          await supabase.auth.signOut();
+          setCurrentUser(null);
+          setIsAuthLoading(false);
+          // In a real app we might want to redirect with an error param, 
+          // but logging them out immediately prevents access.
+          return;
+        }
       }
 
       setIsAuthLoading(true);
@@ -158,6 +179,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const signInWithMicrosoft = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        scopes: 'email profile',
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -174,6 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         switchRole,
         signInWithPassword,
+        signInWithMicrosoft,
         signOut,
         isAuthLoading,
       }}
