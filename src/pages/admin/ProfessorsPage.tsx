@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
@@ -366,12 +366,15 @@ export default function ProfessorsPage() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Eliminar profesor</DialogTitle>
-            <DialogDescription>
+            <div className="flex items-center gap-2 text-destructive mb-2">
+              <AlertTriangle className="h-5 w-5" />
+              <DialogTitle>Eliminar profesor permanentemente</DialogTitle>
+            </div>
+            <DialogDescription className="text-base">
               {deleteTarget
-                ? `Vas a eliminar a ${deleteTarget.name}.`
+                ? <>Estás a punto de eliminar a <strong>{deleteTarget.name}</strong>. Esta acción borrará por completo su cuenta de acceso al sistema y no se puede deshacer.</>
                 : 'Vas a eliminar este profesor.'}
             </DialogDescription>
           </DialogHeader>

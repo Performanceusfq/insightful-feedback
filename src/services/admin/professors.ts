@@ -146,6 +146,11 @@ export async function createProfessorAccount(input: CreateProfessorAccountInput)
     throw new Error('Todos los campos son requeridos.');
   }
 
+  const allowNonAsig = import.meta.env.VITE_ALLOW_NON_ASIG_EMAILS === 'true';
+  if (!allowNonAsig && !email.includes('@asig')) {
+    throw new Error('Solo se permite la creación de profesores con correos que contengan @asig.');
+  }
+
   const {
     data: { session },
     error: sessionError,
@@ -309,8 +314,6 @@ export async function updateProfessor(input: UpdateProfessorInput): Promise<Prof
 }
 
 export async function deleteProfessor(input: DeleteProfessorInput): Promise<DeleteProfessorResult> {
-  await requireAdminRole();
-
   const professorId = input.professorId;
   const replacementProfessorId = input.replacementProfessorId ?? null;
 
@@ -322,19 +325,57 @@ export async function deleteProfessor(input: DeleteProfessorInput): Promise<Dele
     throw new Error('El profesor de reemplazo debe ser diferente.');
   }
 
-  const { data, error } = await supabase.rpc('admin_delete_professor', {
-    p_professor_id: professorId,
-    p_replacement_professor_id: replacementProfessorId,
-  });
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-  if (error) {
-    throw error;
+  if (sessionError || !session?.access_token) {
+    throw new AppError('AUTH_REQUIRED', 'Debes iniciar sesión para realizar esta acción.');
   }
 
-  const response = (data ?? {}) as { deleted_professor_id?: string; moved_courses?: number };
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error('Falta configuración de Supabase en el cliente.');
+  }
+
+  const endpoint = `${supabaseUrl}/functions/v1/admin-professors-delete`;
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        professorId,
+        replacementProfessorId,
+      }),
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el servicio de eliminación de profesores.');
+  }
+
+  const payload = await response.json().catch(() => null) as { error?: string; movedCourses?: number } | null;
+  const message = payload?.error ?? '';
+
+  if (!response.ok) {
+    if (response.status === 400) {
+      throw new Error(message || 'No se puede eliminar el profesor (puede tener clases asignadas sin reemplazo).');
+    }
+    if (response.status === 401) {
+      throw new AppError('AUTH_REQUIRED', message || 'Debes iniciar sesión para realizar esta acción.');
+    }
+    if (response.status === 403) {
+      throw new AppError('FORBIDDEN', message || 'No tienes permisos para realizar esta acción.');
+    }
+    throw new Error(message || 'No se pudo eliminar el profesor.');
+  }
 
   return {
-    deletedProfessorId: response.deleted_professor_id ?? professorId,
-    movedCourses: Number(response.moved_courses ?? 0),
+    deletedProfessorId: professorId,
+    movedCourses: Number(payload?.movedCourses ?? 0),
   };
 }
