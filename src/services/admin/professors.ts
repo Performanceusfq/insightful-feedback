@@ -147,8 +147,10 @@ export async function createProfessorAccount(input: CreateProfessorAccountInput)
   }
 
   const allowNonAsig = import.meta.env.VITE_ALLOW_NON_ASIG_EMAILS === 'true';
-  if (!allowNonAsig && !email.includes('@asig')) {
-    throw new Error('Solo se permite la creación de profesores con correos que contengan @asig.');
+  const isProfessorEmail = email.endsWith('@asig.usfq.edu.ec') || email.endsWith('@usfq.edu.ec');
+  
+  if (!allowNonAsig && !isProfessorEmail) {
+    throw new Error('Solo se permite la creación de profesores con correos @asig.usfq.edu.ec o @usfq.edu.ec.');
   }
 
   const {

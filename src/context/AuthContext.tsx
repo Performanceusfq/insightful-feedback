@@ -57,17 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // DOMAIN RESTRICTION CHECK FOR @asig
+      // DOMAIN RESTRICTION CHECK FOR PROFESSORS
       if (nextSession.user.app_metadata?.provider === 'azure') {
         const userEmail = nextSession.user.email?.toLowerCase() || '';
 
-        // DOMAIN RESTRICTION CHECK FOR @asig
+        // DOMAIN RESTRICTION CHECK
         const isTestModeAllowed = import.meta.env.VITE_ALLOW_NON_ASIG_EMAILS === 'true';
 
-        // Check if the email contains '@asig' 
-        // We use a robust check in case they are @asig.edu.ec or similar. 
-        if (!isTestModeAllowed && !userEmail.includes('@asig')) {
-          console.warn(`[AuthContext] Denied access to non-@asig account: ${userEmail}`);
+        // Check if the email belongs to a professor
+        const isProfessorEmail = userEmail.endsWith('@asig.usfq.edu.ec') || userEmail.endsWith('@usfq.edu.ec');
+
+        if (!isTestModeAllowed && !isProfessorEmail) {
+          console.warn(`[AuthContext] Denied access to non-professor account: ${userEmail}`);
           await supabase.auth.signOut();
           setCurrentUser(null);
           setIsAuthLoading(false);
