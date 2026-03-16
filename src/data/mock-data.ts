@@ -49,6 +49,7 @@ export const roleLabels: Record<AppRole, string> = {
   admin: 'Administrador',
   coordinador: 'Coordinador',
   director: 'Director',
+  profesor_coordinador: 'Profesor + Coordinador',
 };
 
 export const roleIcons: Record<AppRole, string> = {
@@ -57,4 +58,5 @@ export const roleIcons: Record<AppRole, string> = {
   admin: 'Settings',
   coordinador: 'Users',
   director: 'Building2',
+  profesor_coordinador: 'Star',
 };

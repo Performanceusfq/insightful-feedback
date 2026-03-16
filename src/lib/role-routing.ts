@@ -10,7 +10,7 @@ export function getDefaultRouteForRole(role: AppRole): string {
       return '/estudiante';
     case 'coordinador':
       return '/coordinador';
-    case 'director':
-      return '/director';
+    case 'profesor_coordinador':
+      return '/profesor-coordinador';
   }
 }

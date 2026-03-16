@@ -1,4 +1,4 @@
-export type AppRole = 'estudiante' | 'profesor' | 'admin' | 'coordinador' | 'director';
+export type AppRole = 'estudiante' | 'profesor' | 'admin' | 'coordinador' | 'director' | 'profesor_coordinador';
 
 export interface User {
   id: string;

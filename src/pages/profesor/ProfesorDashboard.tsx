@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { useAuth } from '@/context/AuthContext';
-import { mockProfessors, mockCourses } from '@/data/mock-data';
-import { mockEvents } from '@/data/mock-events';
-import { mockAggregatedResponses, mockWeeklyTrends, mockCategoryScores } from '@/data/mock-professor-stats';
+import { useQuery } from '@tanstack/react-query';
+import { getMyCourses, getCourseEvents, getAggregatedResponses, getTrends, getCategoryScores } from '@/services/professors/dashboard';
 import { mockQuestions } from '@/data/mock-questions';
 import { questionCategoryLabels, QuestionCategory } from '@/types/domain';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,28 +27,55 @@ const COLORS = [
 export default function ProfesorDashboard() {
   const { currentUser } = useAuth();
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
-  const professor = mockProfessors.find(p => p.userId === currentUser?.id);
-  const myCourses = useMemo(
-    () => professor ? mockCourses.filter(c => c.professorId === professor.id) : mockCourses.slice(0, 2),
-    [professor],
-  );
+  // 1. Fetch exact professor linked to current user
+  const { data: myCourses = [], isLoading: loadingCourses } = useQuery({
+    queryKey: ['professor', 'courses', currentUser?.id],
+    queryFn: () => getMyCourses(currentUser?.id || ''),
+    enabled: !!currentUser?.id,
+  });
+
   const courseIds = useMemo(() => myCourses.map(c => c.id), [myCourses]);
+
+  // 2. Fetch related data
+  const { data: courseEvents = [], isLoading: loadingEvents } = useQuery({
+    queryKey: ['professor', 'events', courseIds],
+    queryFn: () => getCourseEvents(courseIds),
+    enabled: courseIds.length > 0
+  });
+
+  const { data: rawAgg = [] } = useQuery({
+    queryKey: ['professor', 'agg', courseIds],
+    queryFn: () => getAggregatedResponses(courseIds),
+    enabled: courseIds.length > 0
+  });
+
+  const { data: rawTrends = [] } = useQuery({
+    queryKey: ['professor', 'trends', courseIds],
+    queryFn: () => getTrends(courseIds),
+    enabled: courseIds.length > 0
+  });
+
+  const { data: rawCats = [] } = useQuery({
+    queryKey: ['professor', 'cats', courseIds],
+    queryFn: () => getCategoryScores(courseIds),
+    enabled: courseIds.length > 0
+  });
 
   // Filter data by selected course
   const filteredAgg = useMemo(() => {
     const ids = selectedCourse === 'all' ? courseIds : [selectedCourse];
-    return mockAggregatedResponses.filter(r => ids.includes(r.courseId));
-  }, [selectedCourse, courseIds]);
+    return rawAgg.filter(r => ids.includes(r.courseId));
+  }, [selectedCourse, courseIds, rawAgg]);
 
   const filteredTrends = useMemo(() => {
     const ids = selectedCourse === 'all' ? courseIds : [selectedCourse];
-    return mockWeeklyTrends.filter(t => ids.includes(t.courseId));
-  }, [selectedCourse, courseIds]);
+    return rawTrends.filter(t => ids.includes(t.courseId));
+  }, [selectedCourse, courseIds, rawTrends]);
 
   const filteredCategories = useMemo(() => {
     const ids = selectedCourse === 'all' ? courseIds : [selectedCourse];
-    return mockCategoryScores.filter(s => ids.includes(s.courseId));
-  }, [selectedCourse, courseIds]);
+    return rawCats.filter(s => ids.includes(s.courseId));
+  }, [selectedCourse, courseIds, rawCats]);
 
   // KPIs
   const totalResponses = useMemo(
@@ -64,8 +90,8 @@ export default function ProfesorDashboard() {
 
   const totalEvents = useMemo(() => {
     const ids = selectedCourse === 'all' ? courseIds : [selectedCourse];
-    return mockEvents.filter(e => ids.includes(e.courseId)).length;
-  }, [selectedCourse, courseIds]);
+    return courseEvents.filter(e => ids.includes(e.courseId)).length;
+  }, [selectedCourse, courseIds, courseEvents]);
 
   const openComments = useMemo(
     () => filteredAgg.filter(a => a.openAnswers).flatMap(a => a.openAnswers ?? []),
@@ -87,7 +113,7 @@ export default function ProfesorDashboard() {
     const merged: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     filteredAgg.forEach(a => {
       if (a.likertDistribution) {
-        Object.entries(a.likertDistribution).forEach(([k, v]) => { merged[Number(k)] += v; });
+        Object.entries(a.likertDistribution).forEach(([k, v]) => { merged[Number(k)] += Number(v); });
       }
     });
     return Object.entries(merged).map(([val, count]) => ({ value: `${val}`, count }));
@@ -101,7 +127,7 @@ export default function ProfesorDashboard() {
     return longest.data.map((d, i) => {
       const point: Record<string, string | number | null> = { week: d.week };
       filteredTrends.forEach(t => {
-        const courseName = mockCourses.find(c => c.id === t.courseId)?.code ?? t.courseId;
+        const courseName = myCourses.find(c => c.id === t.courseId)?.code ?? t.courseId;
         point[courseName] = t.data[i]?.avgScore ?? null;
       });
       return point;
@@ -109,8 +135,8 @@ export default function ProfesorDashboard() {
   }, [filteredTrends]);
 
   const trendKeys = useMemo(() => {
-    return filteredTrends.map(t => mockCourses.find(c => c.id === t.courseId)?.code ?? t.courseId);
-  }, [filteredTrends]);
+    return filteredTrends.map(t => myCourses.find(c => c.id === t.courseId)?.code ?? t.courseId);
+  }, [filteredTrends, myCourses]);
 
   // Choice distribution for first MC question found
   const mcQuestion = useMemo(() => filteredAgg.find(a => a.choiceDistribution), [filteredAgg]);
@@ -119,7 +145,11 @@ export default function ProfesorDashboard() {
     return Object.entries(mcQuestion.choiceDistribution).map(([label, value]) => ({ label, value }));
   }, [mcQuestion]);
 
-  const courseName = (id: string) => mockCourses.find(c => c.id === id)?.name ?? id;
+  const courseName = (id: string) => myCourses.find(c => c.id === id)?.name ?? id;
+
+  if (loadingCourses || loadingEvents) {
+    return <div className="p-10 text-center text-muted-foreground animate-pulse">Cargando métricas en vivo...</div>;
+  }
 
   return (
     <div className="space-y-6">

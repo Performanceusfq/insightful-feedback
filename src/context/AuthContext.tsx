@@ -102,8 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const fetchedRoles = (roleRows ?? []).map((row) => row.role as AppRole);
-      const fallbackRole = (profile?.active_role ?? 'estudiante') as AppRole;
-      const roles = dedupeRoles(fetchedRoles.length > 0 ? fetchedRoles : [fallbackRole]);
+
+      let rolesToUse = fetchedRoles.length > 0 ? fetchedRoles : [(profile?.active_role ?? 'estudiante') as AppRole];
+
+      // Virtual role composition
+      if (rolesToUse.includes('profesor') && rolesToUse.includes('coordinador')) {
+        rolesToUse.push('profesor_coordinador');
+      }
+
+      const roles = dedupeRoles(rolesToUse);
+      const fallbackRole = rolesToUse.includes('profesor_coordinador') ? 'profesor_coordinador' : roles[0];
 
       setCurrentUser((previous) => {
         const preservedActiveRole =
@@ -158,6 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setCurrentUser((previous) => (previous ? { ...previous, activeRole: role } : previous));
+
+    // Do NOT write the virtual role to the database
+    if (role === 'profesor_coordinador') {
+      return;
+    }
 
     if (session?.user.id === currentUser.id) {
       void supabase

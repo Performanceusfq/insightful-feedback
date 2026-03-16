@@ -27,7 +27,7 @@ export interface CreateProfessorAccountInput {
   email: string;
   password: string;
   departmentId: string;
-  keepStudentRole: boolean;
+  assignCoordinatorRole: boolean;
   accessToken?: string;
 }
 
@@ -139,7 +139,7 @@ export async function createProfessorAccount(input: CreateProfessorAccountInput)
   const email = input.email.trim().toLowerCase();
   const password = input.password;
   const departmentId = input.departmentId;
-  const keepStudentRole = input.keepStudentRole;
+  const assignCoordinatorRole = input.assignCoordinatorRole;
   const preferredAccessToken = input.accessToken?.trim() ?? '';
 
   if (!name || !email || !password || !departmentId) {
@@ -148,7 +148,7 @@ export async function createProfessorAccount(input: CreateProfessorAccountInput)
 
   const allowNonAsig = import.meta.env.VITE_ALLOW_NON_ASIG_EMAILS === 'true';
   const isProfessorEmail = email.endsWith('@asig.usfq.edu.ec') || email.endsWith('@usfq.edu.ec');
-  
+
   if (!allowNonAsig && !isProfessorEmail) {
     throw new Error('Solo se permite la creación de profesores con correos @asig.usfq.edu.ec o @usfq.edu.ec.');
   }
@@ -209,7 +209,7 @@ export async function createProfessorAccount(input: CreateProfessorAccountInput)
         email,
         password,
         departmentId,
-        keepStudentRole,
+        assignCoordinatorRole,
       }),
     });
   } catch {

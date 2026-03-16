@@ -13,6 +13,7 @@ import {
   BrainCircuit,
   ChevronDown,
   LogOut,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { roleLabels } from '@/data/mock-data';
@@ -32,6 +33,7 @@ const roleIconMap: Record<AppRole, ReactNode> = {
   admin: <Settings className="h-4 w-4" />,
   coordinador: <Users className="h-4 w-4" />,
   director: <Building2 className="h-4 w-4" />,
+  profesor_coordinador: <Star className="h-4 w-4" />,
 };
 
 interface NavItem {
@@ -51,7 +53,7 @@ function getNavItems(role: AppRole): NavItem[] {
         { label: 'Banco de Preguntas', to: '/admin/preguntas', icon: <FileQuestion className="h-4 w-4" /> },
         { label: 'Encuestas', to: '/admin/encuestas', icon: <FileQuestion className="h-4 w-4" /> },
         { label: 'Eventos', to: '/admin/eventos', icon: <QrCode className="h-4 w-4" /> },
-        { label: 'Roles', to: '/admin/roles', icon: <Settings className="h-4 w-4" /> },
+        { label: 'Usuarios', to: '/admin/roles', icon: <Settings className="h-4 w-4" /> },
       ];
     case 'profesor':
       return [
@@ -69,11 +71,17 @@ function getNavItems(role: AppRole): NavItem[] {
         { label: 'Dashboard', to: '/coordinador', icon: <LayoutDashboard className="h-4 w-4" /> },
         { label: 'Analítica', to: '/coordinador/analitica', icon: <BarChart3 className="h-4 w-4" /> },
       ];
-    case 'director':
       return [
         { label: 'Dashboard', to: '/director', icon: <LayoutDashboard className="h-4 w-4" /> },
         { label: 'Analítica', to: '/director/analitica', icon: <BarChart3 className="h-4 w-4" /> },
         { label: 'Insights IA', to: '/director/insights', icon: <BrainCircuit className="h-4 w-4" /> },
+      ];
+    case 'profesor_coordinador':
+      return [
+        { label: 'Dashboard Unificado', to: '/profesor-coordinador', icon: <LayoutDashboard className="h-4 w-4" /> },
+        { label: 'Mis Clases', to: '/profesor/clases', icon: <BookOpen className="h-4 w-4" /> },
+        { label: 'Eventos QR', to: '/profesor/eventos', icon: <QrCode className="h-4 w-4" /> },
+        { label: 'Analítica Dept.', to: '/coordinador/analitica', icon: <BarChart3 className="h-4 w-4" /> },
       ];
   }
 }
@@ -122,7 +130,7 @@ export function AppSidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/admin' || item.to === '/profesor' || item.to === '/estudiante' || item.to === '/coordinador' || item.to === '/director'}
+            end={item.to === '/admin' || item.to === '/profesor' || item.to === '/estudiante' || item.to === '/coordinador' || item.to === '/director' || item.to === '/profesor-coordinador'}
             className={({ isActive }) =>
               cn(
                 'flex h-11 items-center gap-3 rounded-xl px-3 text-sm transition-all',

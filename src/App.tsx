@@ -26,6 +26,7 @@ import CoordinadorAnaliticaPage from '@/pages/coordinador/CoordinadorAnaliticaPa
 import DirectorDashboard from '@/pages/director/DirectorDashboard';
 import DirectorAnaliticaPage from '@/pages/director/DirectorAnaliticaPage';
 import DirectorInsightsPage from '@/pages/director/DirectorInsightsPage';
+import ProfesorCoordinadorDashboard from '@/pages/profesor_coordinador/ProfesorCoordinadorDashboard';
 import PlaceholderPage from '@/pages/placeholder/PlaceholderPage';
 import NotFound from './pages/NotFound';
 
@@ -77,7 +78,9 @@ const App = () => (
 
               <Route path="/profesor" element={<RoleGuard allowedRoles={['profesor']}><ProfesorDashboard /></RoleGuard>} />
               <Route path="/profesor/clases" element={<RoleGuard allowedRoles={['profesor']}><PlaceholderPage title="Mis Clases" description="Sprint 3" /></RoleGuard>} />
-              <Route path="/profesor/eventos" element={<RoleGuard allowedRoles={['profesor']}><EventosQRPage /></RoleGuard>} />
+              <Route path="/profesor/eventos" element={<RoleGuard allowedRoles={['profesor', 'profesor_coordinador']}><EventosQRPage /></RoleGuard>} />
+
+              <Route path="/profesor-coordinador" element={<RoleGuard allowedRoles={['profesor_coordinador']}><ProfesorCoordinadorDashboard /></RoleGuard>} />
 
               <Route path="/estudiante" element={<RoleGuard allowedRoles={['estudiante']}><EstudianteDashboard /></RoleGuard>} />
               <Route path="/estudiante/encuesta/:token" element={<RoleGuard allowedRoles={['estudiante']}><SurveyResponsePage /></RoleGuard>} />

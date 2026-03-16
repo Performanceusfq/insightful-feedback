@@ -28,7 +28,7 @@ interface ProfessorFormState {
   email: string;
   password: string;
   departmentId: string;
-  keepStudentRole: boolean;
+  assignCoordinatorRole: boolean;
 }
 
 const defaultFormState: ProfessorFormState = {
@@ -36,7 +36,7 @@ const defaultFormState: ProfessorFormState = {
   email: '',
   password: '',
   departmentId: '',
-  keepStudentRole: false,
+  assignCoordinatorRole: false,
 };
 
 export default function ProfessorsPage() {
@@ -46,6 +46,7 @@ export default function ProfessorsPage() {
   const [open, setOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProfessorRecord | null>(null);
   const [replacementProfessorId, setReplacementProfessorId] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
 
   const professorsQuery = useQuery({
     queryKey: ['admin-professors-page'],
@@ -54,6 +55,10 @@ export default function ProfessorsPage() {
 
   const departments = professorsQuery.data?.departments ?? [];
   const professors = professorsQuery.data?.professors ?? [];
+
+  const filteredProfessors = departmentFilter
+    ? professors.filter((p) => p.departmentId === departmentFilter)
+    : professors;
 
   const departmentNameById = new Map(departments.map((department) => [department.id, department.name]));
 
@@ -120,7 +125,7 @@ export default function ProfessorsPage() {
       email: professor.email,
       password: '',
       departmentId: professor.departmentId,
-      keepStudentRole: false,
+      assignCoordinatorRole: false,
     });
     setOpen(true);
   };
@@ -166,7 +171,7 @@ export default function ProfessorsPage() {
       email,
       password,
       departmentId,
-      keepStudentRole: formState.keepStudentRole,
+      assignCoordinatorRole: formState.assignCoordinatorRole,
       accessToken: session.access_token,
     });
   };
@@ -270,13 +275,13 @@ export default function ProfessorsPage() {
                 {!isEditing && (
                   <div className="flex items-center justify-between rounded-md border px-3 py-2">
                     <div>
-                      <Label htmlFor="keep-student-role">Mantener rol estudiante</Label>
-                      <p className="text-xs text-muted-foreground">Si está activo, el nuevo usuario tendrá roles profesor + estudiante.</p>
+                      <Label htmlFor="assign-coordinator-role">Asignar rol de Coordinador</Label>
+                      <p className="text-xs text-muted-foreground">Si está activo, el nuevo usuario tendrá roles de Profesor y Coordinador simultáneamente.</p>
                     </div>
                     <Switch
-                      id="keep-student-role"
-                      checked={formState.keepStudentRole}
-                      onCheckedChange={(checked) => setFormState((prev) => ({ ...prev, keepStudentRole: checked }))}
+                      id="assign-coordinator-role"
+                      checked={formState.assignCoordinatorRole}
+                      onCheckedChange={(checked) => setFormState((prev) => ({ ...prev, assignCoordinatorRole: checked }))}
                     />
                   </div>
                 )}
@@ -292,6 +297,31 @@ export default function ProfessorsPage() {
           </Dialog>
         )}
       />
+
+      <div className="mt-6 mb-4">
+        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Filtrar por Departamento:</h3>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={!departmentFilter ? 'default' : 'outline'}
+            size="sm"
+            className="rounded-full"
+            onClick={() => setDepartmentFilter(null)}
+          >
+            Todos
+          </Button>
+          {departments.map((dept) => (
+            <Button
+              key={dept.id}
+              variant={departmentFilter === dept.id ? 'default' : 'outline'}
+              size="sm"
+              className="rounded-full"
+              onClick={() => setDepartmentFilter(dept.id)}
+            >
+              {dept.name}
+            </Button>
+          ))}
+        </div>
+      </div>
 
       <Card>
         <CardContent className="p-0">
@@ -315,7 +345,7 @@ export default function ProfessorsPage() {
                   <TableCell colSpan={5} className="py-8 text-center text-destructive">No se pudo cargar profesores</TableCell>
                 </TableRow>
               ) : (
-                professors.map((professor) => (
+                filteredProfessors.map((professor) => (
                   <TableRow key={professor.id}>
                     <TableCell className="font-medium">{professor.name}</TableCell>
                     <TableCell className="text-muted-foreground">{professor.email}</TableCell>
@@ -347,7 +377,7 @@ export default function ProfessorsPage() {
                 ))
               )}
 
-              {!professorsQuery.isLoading && !professorsQuery.isError && professors.length === 0 && (
+              {!professorsQuery.isLoading && !professorsQuery.isError && filteredProfessors.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Sin profesores</TableCell>
                 </TableRow>

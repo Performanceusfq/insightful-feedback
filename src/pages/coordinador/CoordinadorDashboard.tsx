@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { useAuth } from '@/context/AuthContext';
-import { mockDepartments } from '@/data/mock-data';
-import { mockProfessorRankings, mockDepartmentSummaries } from '@/data/mock-analytics';
+import { useQuery } from '@tanstack/react-query';
+import { getCoordinatorDepartment, getDepartmentSummary, getProfessorRankings } from '@/services/coordinators/dashboard';
 import { questionCategoryLabels, QuestionCategory } from '@/types/domain';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,19 +31,32 @@ const trendIcon = (t: 'up' | 'down' | 'stable') => {
 export default function CoordinadorDashboard() {
   const { currentUser } = useAuth();
 
-  // Get coordinator's department
-  const myDept = mockDepartments.find(d => d.id === currentUser?.departmentId) ?? mockDepartments[0];
-  const deptSummary = mockDepartmentSummaries.find(s => s.departmentId === myDept.id) ?? mockDepartmentSummaries[0];
-  const deptProfessors = mockProfessorRankings
-    .filter(p => p.departmentId === myDept.id)
-    .sort((a, b) => b.avgScore - a.avgScore);
+  const { data: myDepartments = [], isLoading: loadingDepts } = useQuery({
+    queryKey: ['coordinator', 'departments', currentUser?.id],
+    queryFn: () => getCoordinatorDepartment(currentUser?.id || ''),
+    enabled: !!currentUser?.id,
+  });
+
+  const myDept = myDepartments[0];
+
+  const { data: deptSummary, isLoading: loadingSummary } = useQuery({
+    queryKey: ['coordinator', 'summary', myDept?.id],
+    queryFn: () => getDepartmentSummary(myDept?.id || ''),
+    enabled: !!myDept?.id,
+  });
+
+  const { data: deptProfessors = [], isLoading: loadingProfs } = useQuery({
+    queryKey: ['coordinator', 'professors', myDept?.id],
+    queryFn: () => getProfessorRankings(myDept?.id || ''),
+    enabled: !!myDept?.id,
+  });
 
   // Radar data
   const radarData = useMemo(() => {
     const cats: QuestionCategory[] = ['pedagogia', 'contenido', 'evaluacion', 'comunicacion', 'general'];
     return cats.map(cat => ({
       category: questionCategoryLabels[cat],
-      score: deptSummary.categoryScores[cat],
+      score: deptSummary?.categoryScores[cat] || 0,
       fullMark: 5,
     }));
   }, [deptSummary]);
@@ -65,6 +78,14 @@ export default function CoordinadorDashboard() {
       return point;
     });
   }, [deptProfessors]);
+
+  if (loadingDepts || loadingSummary || loadingProfs) {
+    return <div className="p-10 text-center text-muted-foreground animate-pulse">Cargando métricas del departamento...</div>;
+  }
+
+  if (!myDept || !deptSummary) {
+    return <div className="p-10 text-center text-muted-foreground">No tienes departamentos asignados todavía.</div>;
+  }
 
   return (
     <div className="space-y-6">

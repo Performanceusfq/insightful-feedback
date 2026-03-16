@@ -11,7 +11,7 @@ interface CreateProfessorPayload {
   email: string;
   password: string;
   departmentId: string;
-  keepStudentRole: boolean;
+  assignCoordinatorRole: boolean;
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   const email = payload.email?.trim().toLowerCase();
   const password = payload.password ?? '';
   const departmentId = payload.departmentId?.trim();
-  const keepStudentRole = Boolean(payload.keepStudentRole);
+  const assignCoordinatorRole = Boolean(payload.assignCoordinatorRole);
 
   if (!name || !email || !password || !departmentId) {
     return jsonResponse(400, { error: 'name, email, password and departmentId are required' });
@@ -213,15 +213,34 @@ Deno.serve(async (req) => {
       throw upsertProfessorRoleError;
     }
 
-    if (!keepStudentRole) {
-      const { error: deleteStudentRoleError } = await adminClient
-        .from('user_roles')
-        .delete()
-        .eq('user_id', createdUserId)
-        .eq('role', 'estudiante');
+    // Siempre asegurar que no tenga el rol de estudiante
+    const { error: deleteStudentRoleError } = await adminClient
+      .from('user_roles')
+      .delete()
+      .eq('user_id', createdUserId)
+      .eq('role', 'estudiante');
 
-      if (deleteStudentRoleError) {
-        throw deleteStudentRoleError;
+    if (deleteStudentRoleError) {
+      throw deleteStudentRoleError;
+    }
+
+    // Agregar rol de coordinador si fue marcado
+    if (assignCoordinatorRole) {
+      const { error: upsertCoordinatorRoleError } = await adminClient
+        .from('user_roles')
+        .upsert(
+          {
+            user_id: createdUserId,
+            role: 'coordinador',
+          },
+          {
+            onConflict: 'user_id,role',
+            ignoreDuplicates: true,
+          },
+        );
+
+      if (upsertCoordinatorRoleError) {
+        throw upsertCoordinatorRoleError;
       }
     }
 
@@ -238,7 +257,8 @@ Deno.serve(async (req) => {
       throw createProfessorError;
     }
 
-    const roles = keepStudentRole ? ['profesor', 'estudiante'] : ['profesor'];
+    const roles = ['profesor'];
+    if (assignCoordinatorRole) roles.push('coordinador');
 
     console.log('[admin-professors-create] success', {
       requestId,
