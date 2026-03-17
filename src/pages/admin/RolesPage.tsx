@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { AppRole, User } from '@/types/domain';
 import { roleLabels } from '@/data/mock-data';
-import { Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Loader2, AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchAdminUsers, createAdminUserAccount, deleteAdminUser } from '@/services/admin/users';
 
@@ -32,6 +32,7 @@ const roleBadgeVariant: Record<AppRole, 'default' | 'secondary' | 'destructive' 
 export default function RolesPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: usersData, isLoading: isLoadingUsers } = useQuery({
     queryKey: ['admin-users-list'],
@@ -39,6 +40,16 @@ export default function RolesPage() {
   });
 
   const users = usersData ?? [];
+
+  const filteredUsers = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return users;
+    return users.filter((u) =>
+      u.name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.activeRole?.toLowerCase().includes(q)
+    );
+  }, [users, searchQuery]);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -162,6 +173,22 @@ export default function RolesPage() {
         }
       />
 
+      {/* Inline search */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar usuarios…"
+            className="h-9 w-52 rounded-xl pl-8 text-sm"
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {filteredUsers.length} usuario{filteredUsers.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -180,14 +207,14 @@ export default function RolesPage() {
                     Cargando usuarios administrativos...
                   </TableCell>
                 </TableRow>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                    No hay usuarios administrativos.
+                    {searchQuery ? 'Sin resultados' : 'No hay usuarios administrativos.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((u) => (
+                users.length > 0 && filteredUsers.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell>

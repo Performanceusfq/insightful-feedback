@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,13 @@ import {
   questionTypeLabels,
   questionCategoryLabels,
 } from '@/types/domain';
-import { Plus, Pencil, Trash2, X, Loader2, Building2, Globe } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Building2, Globe, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteQuestion, fetchQuestions, upsertQuestion } from '@/services/admin/questions';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import GlobalSearchModal from '@/components/shared/GlobalSearchModal';
 
 const allTypes: QuestionType[] = ['likert', 'open', 'multiple_choice'];
 
@@ -51,6 +52,7 @@ export default function QuestionBankPage() {
   // 'all' | 'general' | <department-uuid>
   const [filterScope, setFilterScope] = useState<string>('all');
   const [newOption, setNewOption] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const questionsQuery = useQuery({
     queryKey: ['admin-questions'],
@@ -92,11 +94,22 @@ export default function QuestionBankPage() {
 
   const questions = questionsQuery.data ?? [];
 
-  const filteredQuestions = filterScope === 'all'
-    ? questions
-    : filterScope === 'general'
-      ? questions.filter((q) => !q.departmentId)
-      : questions.filter((q) => q.departmentId === filterScope);
+  const filteredQuestions = useMemo(() => {
+    let result = filterScope === 'all'
+      ? questions
+      : filterScope === 'general'
+        ? questions.filter((q) => !q.departmentId)
+        : questions.filter((q) => q.departmentId === filterScope);
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      result = result.filter((item) =>
+        item.text.toLowerCase().includes(q) ||
+        item.type.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [questions, filterScope, searchQuery]);
 
   const getDepartmentLabel = (departmentId: string | null | undefined) => {
     if (!departmentId) return 'General';
@@ -143,7 +156,7 @@ export default function QuestionBankPage() {
   // Determine label for the department select filter
   const selectedDeptName = filterScope === 'all' ? null
     : filterScope === 'general' ? null
-    : departments.find((d) => d.id === filterScope)?.name;
+      : departments.find((d) => d.id === filterScope)?.name;
 
   return (
     <div>
@@ -227,9 +240,20 @@ export default function QuestionBankPage() {
           </Badge>
         )}
 
-        {/* Count label */}
-        <span className="ml-auto text-xs text-muted-foreground">
-          {filteredQuestions.length} pregunta{filteredQuestions.length !== 1 ? 's' : ''}
+        {/* Count label + inline search */}
+        <span className="ml-auto flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar preguntas…"
+              className="h-9 w-56 rounded-xl pl-8 text-sm"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {filteredQuestions.length} pregunta{filteredQuestions.length !== 1 ? 's' : ''}
+          </span>
         </span>
       </div>
 

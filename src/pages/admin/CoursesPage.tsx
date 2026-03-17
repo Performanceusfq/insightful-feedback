@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Building2, X, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
 import {
@@ -19,10 +20,14 @@ import {
   type CourseRecord,
 } from '@/services/admin/courses';
 
+
+
 export default function CoursesPage() {
   const queryClient = useQueryClient();
   const [editCourse, setEditCourse] = useState<Partial<CourseRecord> | null>(null);
   const [open, setOpen] = useState(false);
+  const [filterDeptId, setFilterDeptId] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const coursesQuery = useQuery({
     queryKey: ['admin-courses-page'],
@@ -59,6 +64,23 @@ export default function CoursesPage() {
 
   const departmentNameById = new Map(departments.map((department) => [department.id, department.name]));
   const professorNameById = new Map(professors.map((professor) => [professor.id, professor.name]));
+
+  const filteredCourses = useMemo(() => {
+    let result = filterDeptId === 'all' ? courses : courses.filter((c) => c.departmentId === filterDeptId);
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      result = result.filter((c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        c.semester?.toLowerCase().includes(q) ||
+        (professorNameById.get(c.professorId) ?? '').toLowerCase().includes(q) ||
+        (departmentNameById.get(c.departmentId) ?? '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [courses, filterDeptId, searchQuery, professorNameById, departmentNameById]);
+
+  const selectedDeptName = filterDeptId === 'all' ? null : departmentNameById.get(filterDeptId);
 
   const handleSave = () => {
     if (
@@ -164,6 +186,71 @@ export default function CoursesPage() {
         }
       />
 
+      {/* Filter bar */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setFilterDeptId('all')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-sm font-medium transition-colors',
+            filterDeptId === 'all'
+              ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+              : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+          )}
+        >
+          Todas
+        </button>
+
+        <div className="h-6 w-px bg-border" />
+
+        <Select
+          value={filterDeptId === 'all' ? '__none__' : filterDeptId}
+          onValueChange={(v) => setFilterDeptId(v === '__none__' ? 'all' : v)}
+        >
+          <SelectTrigger
+            className={cn(
+              'h-9 w-52 rounded-xl border text-sm font-medium transition-colors',
+              filterDeptId !== 'all'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card text-muted-foreground',
+            )}
+          >
+            <Building2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+            <SelectValue placeholder="Por departamento…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__" className="text-muted-foreground">Por departamento…</SelectItem>
+            {departments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {filterDeptId !== 'all' && selectedDeptName && (
+          <Badge variant="secondary" className="gap-1 pr-1.5">
+            {selectedDeptName}
+            <button type="button" onClick={() => setFilterDeptId('all')} className="ml-0.5 rounded hover:opacity-70">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+
+        <span className="ml-auto flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar clases…"
+              className="h-9 w-52 rounded-xl pl-8 text-sm"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {filteredCourses.length} clase{filteredCourses.length !== 1 ? 's' : ''}
+          </span>
+        </span>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -187,7 +274,7 @@ export default function CoursesPage() {
                   <TableCell colSpan={6} className="py-8 text-center text-destructive">No se pudo cargar clases</TableCell>
                 </TableRow>
               ) : (
-                courses.map((course) => (
+                filteredCourses.map((course) => (
                   <TableRow key={course.id}>
                     <TableCell className="font-mono text-sm font-medium">{course.code}</TableCell>
                     <TableCell>{course.name}</TableCell>
@@ -222,9 +309,11 @@ export default function CoursesPage() {
                 ))
               )}
 
-              {!coursesQuery.isLoading && !coursesQuery.isError && courses.length === 0 && (
+              {!coursesQuery.isLoading && !coursesQuery.isError && filteredCourses.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Sin clases</TableCell>
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                    {filterDeptId === 'all' ? 'Sin clases' : 'No hay clases para este departamento'}
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

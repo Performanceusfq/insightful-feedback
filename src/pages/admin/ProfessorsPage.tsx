@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Pencil, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, AlertTriangle, Building2, X, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
@@ -21,6 +22,7 @@ import {
   type ProfessorRecord,
   updateProfessor,
 } from '@/services/admin/professors';
+
 
 interface ProfessorFormState {
   id?: string;
@@ -46,7 +48,8 @@ export default function ProfessorsPage() {
   const [open, setOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProfessorRecord | null>(null);
   const [replacementProfessorId, setReplacementProfessorId] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState<string | null>(null);
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const professorsQuery = useQuery({
     queryKey: ['admin-professors-page'],
@@ -56,11 +59,21 @@ export default function ProfessorsPage() {
   const departments = professorsQuery.data?.departments ?? [];
   const professors = professorsQuery.data?.professors ?? [];
 
-  const filteredProfessors = departmentFilter
-    ? professors.filter((p) => p.departmentId === departmentFilter)
-    : professors;
-
   const departmentNameById = new Map(departments.map((department) => [department.id, department.name]));
+  const selectedDeptName = departmentFilter === 'all' ? null : departmentNameById.get(departmentFilter);
+
+  const filteredProfessors = useMemo(() => {
+    let result = departmentFilter === 'all' ? professors : professors.filter((p) => p.departmentId === departmentFilter);
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.email.toLowerCase().includes(q) ||
+        (departmentNameById.get(p.departmentId) ?? '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [professors, departmentFilter, searchQuery, departmentNameById]);
 
   const invalidateProfessorRelatedQueries = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-professors-page'] });
@@ -298,29 +311,69 @@ export default function ProfessorsPage() {
         )}
       />
 
-      <div className="mt-6 mb-4">
-        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Filtrar por Departamento:</h3>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={!departmentFilter ? 'default' : 'outline'}
-            size="sm"
-            className="rounded-full"
-            onClick={() => setDepartmentFilter(null)}
+      {/* Filter bar */}
+      <div className="mt-4 mb-4 flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setDepartmentFilter('all')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-sm font-medium transition-colors',
+            departmentFilter === 'all'
+              ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+              : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+          )}
+        >
+          Todos
+        </button>
+
+        <div className="h-6 w-px bg-border" />
+
+        <Select
+          value={departmentFilter === 'all' ? '__none__' : (departmentFilter ?? '__none__')}
+          onValueChange={(v) => setDepartmentFilter(v === '__none__' ? 'all' : v)}
+        >
+          <SelectTrigger
+            className={cn(
+              'h-9 w-52 rounded-xl border text-sm font-medium transition-colors',
+              departmentFilter !== 'all'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card text-muted-foreground',
+            )}
           >
-            Todos
-          </Button>
-          {departments.map((dept) => (
-            <Button
-              key={dept.id}
-              variant={departmentFilter === dept.id ? 'default' : 'outline'}
-              size="sm"
-              className="rounded-full"
-              onClick={() => setDepartmentFilter(dept.id)}
-            >
-              {dept.name}
-            </Button>
-          ))}
-        </div>
+            <Building2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+            <SelectValue placeholder="Por departamento…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__" className="text-muted-foreground">Por departamento…</SelectItem>
+            {departments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {departmentFilter !== 'all' && selectedDeptName && (
+          <Badge variant="secondary" className="gap-1 pr-1.5">
+            {selectedDeptName}
+            <button type="button" onClick={() => setDepartmentFilter('all')} className="ml-0.5 rounded hover:opacity-70">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+
+        <span className="ml-auto flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar profesores…"
+              className="h-9 w-52 rounded-xl pl-8 text-sm"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {filteredProfessors.length} profesor{filteredProfessors.length !== 1 ? 'es' : ''}
+          </span>
+        </span>
       </div>
 
       <Card>

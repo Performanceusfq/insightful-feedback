@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
 import {
@@ -21,6 +21,7 @@ export default function DepartmentsPage() {
   const queryClient = useQueryClient();
   const [editDept, setEditDept] = useState<Partial<DepartmentUpsertInput> | null>(null);
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const departmentsQuery = useQuery({
     queryKey: ['admin-departments'],
@@ -65,6 +66,14 @@ export default function DepartmentsPage() {
   };
 
   const departments = departmentsQuery.data ?? [];
+
+  const filteredDepartments = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return departments;
+    return departments.filter((d) =>
+      d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q)
+    );
+  }, [departments, searchQuery]);
 
   return (
     <div>
@@ -112,6 +121,22 @@ export default function DepartmentsPage() {
         }
       />
 
+      {/* Inline search */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar departamentos…"
+            className="h-9 w-56 rounded-xl pl-8 text-sm"
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {filteredDepartments.length} departamento{filteredDepartments.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -132,7 +157,7 @@ export default function DepartmentsPage() {
                   <TableCell colSpan={3} className="py-8 text-center text-destructive">No se pudo cargar departamentos</TableCell>
                 </TableRow>
               ) : (
-                departments.map((department) => (
+                departments.length > 0 && filteredDepartments.map((department) => (
                   <TableRow key={department.id}>
                     <TableCell className="font-mono text-sm font-medium">{department.code}</TableCell>
                     <TableCell>{department.name}</TableCell>
@@ -162,9 +187,11 @@ export default function DepartmentsPage() {
                 ))
               )}
 
-              {!departmentsQuery.isLoading && !departmentsQuery.isError && departments.length === 0 && (
+              {!departmentsQuery.isLoading && !departmentsQuery.isError && filteredDepartments.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">Sin departamentos</TableCell>
+                  <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
+                    {searchQuery ? 'Sin resultados' : 'Sin departamentos'}
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

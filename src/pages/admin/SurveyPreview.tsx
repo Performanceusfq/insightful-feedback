@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { SurveyConfig, Question } from '@/types/domain';
-import { Pin, Shuffle, MessageSquare, CircleDot } from 'lucide-react';
+import { Pin, Shuffle, Eye, MessageSquare, CircleDot } from 'lucide-react';
 
 interface SurveyPreviewProps {
   config: SurveyConfig;
@@ -12,47 +11,51 @@ interface SurveyPreviewProps {
   onClose: () => void;
 }
 
-function shuffleArray<T>(arr: T[]): T[] {
-  const shuffled = [...arr];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
 export default function SurveyPreview({ config, questions, courses, onClose }: SurveyPreviewProps) {
   const course = courses.find((value) => value.id === config.courseId);
 
   const previewQuestions = useMemo(() => {
     const fixed = config.fixedQuestionIds
-      .map((id) => questions.find((question) => question.id === id))
+      .map((id) => questions.find((q) => q.id === id))
       .filter(Boolean) as Question[];
 
     const randomPool = config.randomPool.questionIds
-      .map((id) => questions.find((question) => question.id === id))
+      .map((id) => questions.find((q) => q.id === id))
       .filter(Boolean) as Question[];
 
     return [
-      ...fixed.map((question) => ({ ...question, source: 'fixed' as const })),
-      ...randomPool.map((question) => ({ ...question, source: 'pool' as const })),
+      ...fixed.map((q) => ({ ...q, source: 'fixed' as const })),
+      ...randomPool.map((q) => ({ ...q, source: 'pool' as const })),
     ];
   }, [config, questions]);
+
+  const fixedCount = previewQuestions.filter((q) => q.source === 'fixed').length;
+  const randomCount = previewQuestions.filter((q) => q.source === 'pool').length;
+  const total = fixedCount + config.randomPool.count;
 
   return (
     <Dialog open onOpenChange={() => onClose()}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex flex-col gap-1">
-            <span>Vista Previa: {config.name}</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              (Solo aparecerán {config.fixedQuestionIds.length + config.randomPool.count} preguntas porque {config.randomPool.count} son aleatorias)
+          <DialogTitle>{config.name}</DialogTitle>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <Pin className="h-3 w-3 text-primary" />
+              {fixedCount} Fijas
             </span>
-          </DialogTitle>
-          {course && <p className="text-sm text-muted-foreground">{course.name} ({course.code})</p>}
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              <Shuffle className="h-3 w-3 text-primary" />
+              {randomCount} Aleatorias
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              <Eye className="h-3 w-3" />
+              {total} se mostrarán
+            </span>
+          </div>
         </DialogHeader>
 
-        <div className="mt-2 rounded-xl border-2 border-dashed border-primary/20 bg-muted/30 p-4">
+        {/* Questions preview */}
+        <div className="rounded-xl border-2 border-dashed border-primary/20 bg-muted/30 p-4">
           <p className="mb-4 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Así verá el estudiante la encuesta
           </p>
@@ -65,11 +68,11 @@ export default function SurveyPreview({ config, questions, courses, onClose }: S
                     {index + 1}. {question.text}
                     {question.required && <span className="ml-1 text-destructive">*</span>}
                   </span>
-                   <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
+                  <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
                     {question.source === 'fixed' ? (
                       <><Pin className="mr-1 h-2.5 w-2.5" /> Fija</>
                     ) : (
-                      <><Shuffle className="mr-1 h-2.5 w-2.5" /> De Pool Aleatorio</>
+                      <><Shuffle className="mr-1 h-2.5 w-2.5" /> Aleatoria</>
                     )}
                   </Badge>
                 </div>
@@ -113,12 +116,6 @@ export default function SurveyPreview({ config, questions, courses, onClose }: S
             ))}
           </div>
 
-          <Separator className="my-4" />
-           <p className="text-center text-xs text-muted-foreground">
-            {previewQuestions.filter((question) => question.source === 'fixed').length} preguntas fijas
-            {' · '}
-            Pool de {previewQuestions.filter((question) => question.source === 'pool').length} aleatorias (se mostrarán {config.randomPool.count})
-          </p>
         </div>
       </DialogContent>
     </Dialog>

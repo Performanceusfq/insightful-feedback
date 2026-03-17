@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { SurveyConfig, questionTypeLabels, questionCategoryLabels } from '@/types/domain';
-import { Plus, Pencil, Eye, Trash2, Shuffle, Pin, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Eye, Trash2, Shuffle, Pin, Loader2, Building2, X, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+function SurveyStatChips({ fixedCount, randomPoolCount, shown }: { fixedCount: number; randomPoolCount: number; shown: number }) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+        <Pin className="h-3 w-3 text-primary" />
+        {fixedCount} Fijas
+      </span>
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+        <Shuffle className="h-3 w-3 text-primary" />
+        {randomPoolCount} Aleatorias
+      </span>
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+        <Eye className="h-3 w-3" />
+        {shown} se mostrarán
+      </span>
+    </div>
+  );
+}
 import { toast } from 'sonner';
 import SurveyPreview from './SurveyPreview';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
@@ -22,6 +42,8 @@ import {
 
 export default function SurveyConfigPage() {
   const queryClient = useQueryClient();
+  const [filterDeptId, setFilterDeptId] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [editConfig, setEditConfig] = useState<Partial<SurveyConfig> | null>(null);
   const [open, setOpen] = useState(false);
   const [previewConfigId, setPreviewConfigId] = useState<string | null>(null);
@@ -62,9 +84,23 @@ export default function SurveyConfigPage() {
   const questions = configsQuery.data?.questions ?? [];
   const activeQuestions = questions.filter((question) => question.active);
 
-  const filteredCourses = selectedDepartmentId 
+  const filteredCourses = selectedDepartmentId
     ? courses.filter(course => course.departmentId === selectedDepartmentId)
     : courses;
+
+  const filteredConfigs = useMemo(() => {
+    let result = filterDeptId === 'all' ? configs : configs.filter((cfg) => {
+      const course = courses.find((c) => c.id === cfg.courseId);
+      return course?.departmentId === filterDeptId;
+    });
+    const q = searchQuery.toLowerCase().trim();
+    if (q) result = result.filter((cfg) => cfg.name.toLowerCase().includes(q));
+    return result;
+  }, [configs, courses, filterDeptId, searchQuery]);
+
+  const selectedDeptName = filterDeptId === 'all'
+    ? null
+    : departments.find((d) => d.id === filterDeptId)?.name;
 
   const handleSave = () => {
     if (!editConfig?.courseId || !editConfig?.name?.trim()) {
@@ -88,7 +124,7 @@ export default function SurveyConfigPage() {
     const randomQuestionIds = activeQuestions
       .filter((q) => !fixedQuestionIds.includes(q.id))
       .map((q) => q.id);
-    
+
     const randomCount = targetTotalCount - fixedQuestionIds.length;
 
     upsertMutation.mutate({
@@ -153,61 +189,134 @@ export default function SurveyConfigPage() {
           <CardContent className="py-12 text-center text-destructive">No se pudo cargar configuraciones de encuestas</CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {configs.map((config) => (
-            <Card key={config.id}>
-              <CardHeader className="flex flex-row items-start justify-between pb-3">
-                <div>
-                  <CardTitle className="text-base">{config.name}</CardTitle>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{getCourseName(config.courseId)}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={config.active}
-                    onCheckedChange={(checked) => {
-                      upsertMutation.mutate({
-                        ...config,
-                        active: checked,
-                      });
-                    }}
-                  />
-                  <Badge variant={config.active ? 'default' : 'secondary'}>
-                    {config.active ? 'Activa' : 'Inactiva'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1"><Pin className="h-3 w-3" /> {config.fixedQuestionIds.length} fijas</span>
-                  <span className="flex items-center gap-1"><Shuffle className="h-3 w-3" /> {config.randomPool.count} aleatorias</span>
-                  <span className="font-semibold text-primary">· {config.fixedQuestionIds.length + config.randomPool.count} total</span>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { setEditConfig(config); setOpen(true); }}>
-                    <Pencil className="mr-1 h-3 w-3" /> Editar
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setPreviewConfigId(config.id)}>
-                    <Eye className="mr-1 h-3 w-3" /> Vista previa
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate(config.id)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <>
+          {/* Filter bar */}
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setFilterDeptId('all')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                filterDeptId === 'all'
+                  ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                  : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              )}
+            >
+              Todas
+            </button>
 
-          {configs.length === 0 && (
-            <Card className="col-span-2">
-              <CardContent className="py-12 text-center text-muted-foreground">No hay encuestas configuradas</CardContent>
-            </Card>
-          )}
-        </div>
+            <div className="h-6 w-px bg-border" />
+
+            <Select
+              value={filterDeptId === 'all' ? '__none__' : filterDeptId}
+              onValueChange={(v) => setFilterDeptId(v === '__none__' ? 'all' : v)}
+            >
+              <SelectTrigger
+                className={cn(
+                  'h-9 w-52 rounded-xl border text-sm font-medium transition-colors',
+                  filterDeptId !== 'all'
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground',
+                )}
+              >
+                <Building2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                <SelectValue placeholder="Por departamento…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-muted-foreground">Por departamento…</SelectItem>
+                {configsQuery.isLoading ? (
+                  <SelectItem value="__loading__" disabled>Cargando…</SelectItem>
+                ) : (
+                  departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+
+            {filterDeptId !== 'all' && selectedDeptName && (
+              <Badge variant="secondary" className="gap-1 pr-1.5">
+                {selectedDeptName}
+                <button type="button" onClick={() => setFilterDeptId('all')} className="ml-0.5 rounded hover:opacity-70">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+
+            <span className="ml-auto flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar encuestas…"
+                  className="h-9 w-48 rounded-xl pl-8 text-sm"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {filteredConfigs.length} encuesta{filteredConfigs.length !== 1 ? 's' : ''}
+              </span>
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {filteredConfigs.map((config) => (
+              <Card key={config.id}>
+                <CardHeader className="flex flex-row items-start justify-between pb-3">
+                  <div>
+                    <CardTitle className="text-base">{config.name}</CardTitle>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{getCourseName(config.courseId)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={config.active}
+                      onCheckedChange={(checked) => {
+                        upsertMutation.mutate({
+                          ...config,
+                          active: checked,
+                        });
+                      }}
+                    />
+                    <Badge variant={config.active ? 'default' : 'secondary'}>
+                      {config.active ? 'Activa' : 'Inactiva'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <SurveyStatChips
+                    fixedCount={config.fixedQuestionIds.length}
+                    randomPoolCount={config.randomPool.count}
+                    shown={config.fixedQuestionIds.length + config.randomPool.count}
+                  />
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { setEditConfig(config); setOpen(true); }}>
+                      <Pencil className="mr-1 h-3 w-3" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setPreviewConfigId(config.id)}>
+                      <Eye className="mr-1 h-3 w-3" /> Vista previa
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate(config.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {filteredConfigs.length === 0 && (
+              <Card className="col-span-2">
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  {filterDeptId === 'all' ? 'No hay encuestas configuradas' : 'No hay encuestas para este departamento'}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
