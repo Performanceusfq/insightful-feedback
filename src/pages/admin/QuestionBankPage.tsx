@@ -10,8 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Question,
   QuestionType,
@@ -19,13 +17,14 @@ import {
   questionTypeLabels,
   questionCategoryLabels,
 } from '@/types/domain';
-import { Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Building2, Globe } from 'lucide-react';
 import { toast } from 'sonner';
-import { deleteQuestion, fetchQuestions, setQuestionActive, upsertQuestion } from '@/services/admin/questions';
+import { deleteQuestion, fetchQuestions, upsertQuestion } from '@/services/admin/questions';
 import { getUserFacingErrorMessage } from '@/lib/error-messages';
+import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 
 const allTypes: QuestionType[] = ['likert', 'open', 'multiple_choice'];
-const allCategories: QuestionCategory[] = ['pedagogia', 'contenido', 'evaluacion', 'comunicacion', 'general'];
 
 const typeBadgeColor: Record<QuestionType, string> = {
   likert: 'bg-primary/10 text-primary',
@@ -33,17 +32,37 @@ const typeBadgeColor: Record<QuestionType, string> = {
   multiple_choice: 'bg-warning/10 text-warning',
 };
 
+interface DepartmentOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
+async function fetchDepartments(): Promise<DepartmentOption[]> {
+  const { data, error } = await supabase.from('departments').select('id, name, code').order('name');
+  if (error) throw error;
+  return data ?? [];
+}
+
 export default function QuestionBankPage() {
   const queryClient = useQueryClient();
   const [editQuestion, setEditQuestion] = useState<Partial<Question> | null>(null);
   const [open, setOpen] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  // 'all' | 'general' | <department-uuid>
+  const [filterScope, setFilterScope] = useState<string>('all');
   const [newOption, setNewOption] = useState('');
 
   const questionsQuery = useQuery({
     queryKey: ['admin-questions'],
     queryFn: fetchQuestions,
   });
+
+  const departmentsQuery = useQuery({
+    queryKey: ['admin-departments-options'],
+    queryFn: fetchDepartments,
+  });
+
+  const departments = departmentsQuery.data ?? [];
 
   const upsertMutation = useMutation({
     mutationFn: upsertQuestion,
@@ -59,15 +78,6 @@ export default function QuestionBankPage() {
     },
   });
 
-  const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, active }: { id: string; active: boolean }) => setQuestionActive(id, active),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
-    },
-    onError: (error: { message?: string }) => {
-      toast.error(getUserFacingErrorMessage(error, 'No se pudo actualizar el estado'));
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteQuestion,
@@ -81,21 +91,27 @@ export default function QuestionBankPage() {
   });
 
   const questions = questionsQuery.data ?? [];
-  const filteredQuestions = filterCategory === 'all'
+
+  const filteredQuestions = filterScope === 'all'
     ? questions
-    : questions.filter((question) => question.category === filterCategory);
+    : filterScope === 'general'
+      ? questions.filter((q) => !q.departmentId)
+      : questions.filter((q) => q.departmentId === filterScope);
+
+  const getDepartmentLabel = (departmentId: string | null | undefined) => {
+    if (!departmentId) return 'General';
+    return departments.find((d) => d.id === departmentId)?.name ?? 'Desconocido';
+  };
 
   const handleSave = () => {
     if (!editQuestion?.text?.trim() || !editQuestion?.type || !editQuestion?.category) {
       toast.error('Texto, tipo y categoría son requeridos');
       return;
     }
-
     if (editQuestion.type === 'multiple_choice' && (!editQuestion.options || editQuestion.options.length < 2)) {
       toast.error('Las preguntas de opción múltiple necesitan al menos 2 opciones');
       return;
     }
-
     upsertMutation.mutate({
       id: editQuestion.id,
       text: editQuestion.text.trim(),
@@ -105,38 +121,29 @@ export default function QuestionBankPage() {
       likertScale: editQuestion.type === 'likert' ? editQuestion.likertScale ?? 5 : undefined,
       required: editQuestion.required ?? false,
       active: editQuestion.active ?? true,
+      departmentId: editQuestion.departmentId ?? null,
     });
   };
 
   const addOption = () => {
     if (!newOption.trim()) return;
-
-    setEditQuestion((previous) => ({
-      ...previous,
-      options: [...(previous?.options || []), newOption.trim()],
-    }));
-
+    setEditQuestion((prev) => ({ ...prev, options: [...(prev?.options || []), newOption.trim()] }));
     setNewOption('');
   };
 
   const removeOption = (index: number) => {
-    setEditQuestion((previous) => ({
-      ...previous,
-      options: (previous?.options || []).filter((_, optionIndex) => optionIndex !== index),
-    }));
+    setEditQuestion((prev) => ({ ...prev, options: (prev?.options || []).filter((_, i) => i !== index) }));
   };
 
   const openNew = () => {
-    setEditQuestion({
-      type: 'likert',
-      category: 'general',
-      required: false,
-      active: true,
-      options: [],
-      likertScale: 5,
-    });
+    setEditQuestion({ type: 'likert', category: 'general', required: false, active: true, options: [], likertScale: 5, departmentId: null });
     setOpen(true);
   };
+
+  // Determine label for the department select filter
+  const selectedDeptName = filterScope === 'all' ? null
+    : filterScope === 'general' ? null
+    : departments.find((d) => d.id === filterScope)?.name;
 
   return (
     <div>
@@ -150,37 +157,98 @@ export default function QuestionBankPage() {
         }
       />
 
-      <Tabs value={filterCategory} onValueChange={setFilterCategory} className="mb-4">
-        <TabsList>
-          <TabsTrigger value="all">Todas</TabsTrigger>
-          {allCategories.map((category) => (
-            <TabsTrigger key={category} value={category}>{questionCategoryLabels[category]}</TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {/* Compact filter bar */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        {/* Quick toggles */}
+        <button
+          type="button"
+          onClick={() => setFilterScope('all')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-sm font-medium transition-colors',
+            filterScope === 'all'
+              ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+              : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          )}
+        >
+          Todas
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterScope('general')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-sm font-medium transition-colors',
+            filterScope === 'general'
+              ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+              : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          )}
+        >
+          <Globe className="h-3.5 w-3.5" />
+          Generales
+        </button>
+
+        {/* Separator */}
+        <div className="h-6 w-px bg-border" />
+
+        {/* Department dropdown */}
+        <Select
+          value={['all', 'general'].includes(filterScope) ? '__none__' : filterScope}
+          onValueChange={(v) => setFilterScope(v === '__none__' ? 'all' : v)}
+        >
+          <SelectTrigger
+            className={cn(
+              'h-9 w-52 rounded-xl border text-sm font-medium transition-colors',
+              !['all', 'general'].includes(filterScope)
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card text-muted-foreground'
+            )}
+          >
+            <Building2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+            <SelectValue placeholder="Por departamento…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__" className="text-muted-foreground">Por departamento…</SelectItem>
+            {departmentsQuery.isLoading ? (
+              <SelectItem value="__loading__" disabled>Cargando…</SelectItem>
+            ) : (
+              departments.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+
+        {/* Active filter pill */}
+        {!['all', 'general'].includes(filterScope) && selectedDeptName && (
+          <Badge variant="secondary" className="gap-1 pr-1.5">
+            {selectedDeptName}
+            <button type="button" onClick={() => setFilterScope('all')} className="ml-0.5 rounded hover:opacity-70">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+
+        {/* Count label */}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {filteredQuestions.length} pregunta{filteredQuestions.length !== 1 ? 's' : ''}
+        </span>
+      </div>
 
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[45%]">Pregunta</TableHead>
+                <TableHead className="w-[35%]">Pregunta</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Requerida</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Departamento</TableHead>
                 <TableHead className="w-24">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {questionsQuery.isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Cargando preguntas...</TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Cargando preguntas...</TableCell></TableRow>
               ) : questionsQuery.isError ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-destructive">No se pudo cargar el banco de preguntas</TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} className="py-8 text-center text-destructive">No se pudo cargar el banco de preguntas</TableCell></TableRow>
               ) : (
                 filteredQuestions.map((question) => (
                   <TableRow key={question.id}>
@@ -190,32 +258,17 @@ export default function QuestionBankPage() {
                         {questionTypeLabels[question.type]}
                       </span>
                     </TableCell>
-                    <TableCell><Badge variant="secondary">{questionCategoryLabels[question.category]}</Badge></TableCell>
-                    <TableCell>{question.required ? '✓' : '—'}</TableCell>
                     <TableCell>
-                      <Switch
-                        checked={question.active}
-                        onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: question.id, active: checked })}
-                      />
+                      <Badge variant={question.departmentId ? 'outline' : 'default'} className="text-xs">
+                        {getDepartmentLabel(question.departmentId)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditQuestion(question);
-                            setOpen(true);
-                          }}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => { setEditQuestion(question); setOpen(true); }}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteMutation.mutate(question.id)}
-                          disabled={deleteMutation.isPending}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(question.id)} disabled={deleteMutation.isPending}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -223,11 +276,8 @@ export default function QuestionBankPage() {
                   </TableRow>
                 ))
               )}
-
               {!questionsQuery.isLoading && !questionsQuery.isError && filteredQuestions.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">Sin preguntas en esta categoría</TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Sin preguntas en esta sección</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -244,7 +294,7 @@ export default function QuestionBankPage() {
               <Label>Texto de la pregunta</Label>
               <Textarea
                 value={editQuestion?.text || ''}
-                onChange={(event) => setEditQuestion((previous) => ({ ...previous, text: event.target.value }))}
+                onChange={(e) => setEditQuestion((prev) => ({ ...prev, text: e.target.value }))}
                 placeholder="¿El profesor explica los conceptos de manera clara?"
                 rows={3}
               />
@@ -254,27 +304,24 @@ export default function QuestionBankPage() {
                 <Label>Tipo</Label>
                 <Select
                   value={editQuestion?.type || 'likert'}
-                  onValueChange={(value) => setEditQuestion((previous) => ({ ...previous, type: value as QuestionType }))}
+                  onValueChange={(v) => setEditQuestion((prev) => ({ ...prev, type: v as QuestionType }))}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {allTypes.map((type) => (
-                      <SelectItem key={type} value={type}>{questionTypeLabels[type]}</SelectItem>
-                    ))}
+                    {allTypes.map((t) => <SelectItem key={t} value={t}>{questionTypeLabels[t]}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Categoría</Label>
+                <Label>Departamento</Label>
                 <Select
-                  value={editQuestion?.category || 'general'}
-                  onValueChange={(value) => setEditQuestion((previous) => ({ ...previous, category: value as QuestionCategory }))}
+                  value={editQuestion?.departmentId ?? '__general__'}
+                  onValueChange={(v) => setEditQuestion((prev) => ({ ...prev, departmentId: v === '__general__' ? null : v }))}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="General (todos los departamentos)" /></SelectTrigger>
                   <SelectContent>
-                    {allCategories.map((category) => (
-                      <SelectItem key={category} value={category}>{questionCategoryLabels[category]}</SelectItem>
-                    ))}
+                    <SelectItem value="__general__">General (todos los departamentos)</SelectItem>
+                    {departments.map((dept) => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -285,13 +332,11 @@ export default function QuestionBankPage() {
                 <Label>Escala (1 a N)</Label>
                 <Select
                   value={String(editQuestion.likertScale || 5)}
-                  onValueChange={(value) => setEditQuestion((previous) => ({ ...previous, likertScale: Number(value) }))}
+                  onValueChange={(v) => setEditQuestion((prev) => ({ ...prev, likertScale: Number(v) }))}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {[3, 4, 5, 7, 10].map((scale) => (
-                      <SelectItem key={scale} value={String(scale)}>{scale} puntos</SelectItem>
-                    ))}
+                    {[3, 4, 5, 7, 10].map((s) => <SelectItem key={s} value={String(s)}>{s} puntos</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -301,25 +346,18 @@ export default function QuestionBankPage() {
               <div>
                 <Label>Opciones de respuesta</Label>
                 <div className="mt-2 space-y-2">
-                  {(editQuestion.options || []).map((option, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="flex-1 rounded-md border bg-muted px-3 py-1.5 text-sm">{option}</span>
-                      <Button variant="ghost" size="icon" onClick={() => removeOption(index)}>
-                        <X className="h-3 w-3" />
-                      </Button>
+                  {(editQuestion.options || []).map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="flex-1 rounded-md border bg-muted px-3 py-1.5 text-sm">{opt}</span>
+                      <Button variant="ghost" size="icon" onClick={() => removeOption(i)}><X className="h-3 w-3" /></Button>
                     </div>
                   ))}
                   <div className="flex gap-2">
                     <Input
                       value={newOption}
-                      onChange={(event) => setNewOption(event.target.value)}
+                      onChange={(e) => setNewOption(e.target.value)}
                       placeholder="Nueva opción"
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addOption();
-                        }
-                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOption(); } }}
                     />
                     <Button variant="outline" size="sm" onClick={addOption}>Agregar</Button>
                   </div>
@@ -327,20 +365,8 @@ export default function QuestionBankPage() {
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={editQuestion?.required ?? false}
-                onCheckedChange={(checked) => setEditQuestion((previous) => ({ ...previous, required: checked }))}
-              />
-              <Label>Pregunta requerida</Label>
-            </div>
-
             <Button onClick={handleSave} className="w-full" disabled={upsertMutation.isPending}>
-              {upsertMutation.isPending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...</>
-              ) : (
-                'Guardar'
-              )}
+              {upsertMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...</> : 'Guardar'}
             </Button>
           </div>
         </DialogContent>

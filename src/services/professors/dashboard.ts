@@ -1,15 +1,27 @@
 import { supabase } from '@/lib/supabase';
 import type { Course, ClassEvent } from '@/types/domain';
 
-export async function getMyCourses(professorId: string): Promise<Course[]> {
+export async function getMyCourses(userId: string): Promise<Course[]> {
+    // Step 1: Resolve professors.id from the auth user_id
+    const { data: prof, error: profError } = await supabase
+        .from('professors')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (profError) throw profError;
+    if (!prof) return [];
+
+    // Step 2: Query courses using the resolved professors.id
     const { data, error } = await supabase
         .from('courses')
         .select('*')
-        .eq('professor_id', professorId);
+        .eq('professor_id', prof.id)
+        .order('name');
 
     if (error) throw error;
 
-    return data.map(course => ({
+    return (data ?? []).map(course => ({
         id: course.id,
         name: course.name,
         code: course.code,

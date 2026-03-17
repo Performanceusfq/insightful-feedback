@@ -19,6 +19,7 @@ import SurveyConfigPage from '@/pages/admin/SurveyConfigPage';
 import EventConfigPage from '@/pages/admin/EventConfigPage';
 import EventosQRPage from '@/pages/profesor/EventosQRPage';
 import ProfesorDashboard from '@/pages/profesor/ProfesorDashboard';
+import MisClasesPage from '@/pages/profesor/MisClasesPage';
 import EstudianteDashboard from '@/pages/estudiante/EstudianteDashboard';
 import SurveyResponsePage from '@/pages/estudiante/SurveyResponsePage';
 import CoordinadorDashboard from '@/pages/coordinador/CoordinadorDashboard';
@@ -77,7 +78,7 @@ const App = () => (
               <Route path="/admin/eventos" element={<RoleGuard allowedRoles={['admin']}><EventConfigPage /></RoleGuard>} />
 
               <Route path="/profesor" element={<RoleGuard allowedRoles={['profesor']}><ProfesorDashboard /></RoleGuard>} />
-              <Route path="/profesor/clases" element={<RoleGuard allowedRoles={['profesor']}><PlaceholderPage title="Mis Clases" description="Sprint 3" /></RoleGuard>} />
+              <Route path="/profesor/clases" element={<RoleGuard allowedRoles={['profesor']}><MisClasesPage /></RoleGuard>} />
               <Route path="/profesor/eventos" element={<RoleGuard allowedRoles={['profesor', 'profesor_coordinador']}><EventosQRPage /></RoleGuard>} />
 
               <Route path="/profesor-coordinador" element={<RoleGuard allowedRoles={['profesor_coordinador']}><ProfesorCoordinadorDashboard /></RoleGuard>} />

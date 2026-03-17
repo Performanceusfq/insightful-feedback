@@ -12,6 +12,7 @@ export interface QuestionUpsertInput {
   likertScale?: number;
   required: boolean;
   active?: boolean;
+  departmentId?: string | null;
 }
 
 function parseOptions(value: Json | null): string[] | undefined {
@@ -23,7 +24,7 @@ function parseOptions(value: Json | null): string[] | undefined {
   return options.length > 0 ? options : undefined;
 }
 
-function mapQuestion(row: {
+interface QuestionRow {
   id: string;
   text: string;
   type: Question['type'];
@@ -32,7 +33,10 @@ function mapQuestion(row: {
   likert_scale: number | null;
   required: boolean;
   active: boolean;
-}): Question {
+  department_id: string | null;
+}
+
+function mapQuestion(row: QuestionRow): Question {
   return {
     id: row.id,
     text: row.text,
@@ -42,20 +46,21 @@ function mapQuestion(row: {
     likertScale: row.likert_scale ?? undefined,
     required: row.required,
     active: row.active,
+    departmentId: row.department_id,
   };
 }
 
 export async function fetchQuestions(): Promise<Question[]> {
   const { data, error } = await supabase
     .from('questions')
-    .select('id, text, type, category, options, likert_scale, required, active')
+    .select('id, text, type, category, options, likert_scale, required, active, department_id')
     .order('created_at', { ascending: false });
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map(mapQuestion);
+  return ((data ?? []) as unknown as QuestionRow[]).map(mapQuestion);
 }
 
 export async function upsertQuestion(input: QuestionUpsertInput): Promise<Question> {
@@ -69,34 +74,35 @@ export async function upsertQuestion(input: QuestionUpsertInput): Promise<Questi
     active: input.active ?? true,
     options: input.type === 'multiple_choice' ? input.options ?? [] : null,
     likert_scale: input.type === 'likert' ? input.likertScale ?? 5 : null,
+    department_id: input.departmentId ?? null,
   };
 
   if (input.id) {
     const { data, error } = await supabase
       .from('questions')
-      .update(basePayload)
+      .update(basePayload as any)
       .eq('id', input.id)
-      .select('id, text, type, category, options, likert_scale, required, active')
+      .select('id, text, type, category, options, likert_scale, required, active, department_id')
       .single();
 
     if (error) {
       throw error;
     }
 
-    return mapQuestion(data);
+    return mapQuestion(data as unknown as QuestionRow);
   }
 
   const { data, error } = await supabase
     .from('questions')
-    .insert(basePayload)
-    .select('id, text, type, category, options, likert_scale, required, active')
+    .insert(basePayload as any)
+    .select('id, text, type, category, options, likert_scale, required, active, department_id')
     .single();
 
   if (error) {
     throw error;
   }
 
-  return mapQuestion(data);
+  return mapQuestion(data as unknown as QuestionRow);
 }
 
 export async function setQuestionActive(id: string, active: boolean): Promise<void> {

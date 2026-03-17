@@ -68,6 +68,7 @@ export interface Question {
   likertScale?: number; // default 5
   required: boolean;
   active: boolean;
+  departmentId?: string | null; // null = General (applies to all departments)
 }
 
 export interface SurveyConfig {
