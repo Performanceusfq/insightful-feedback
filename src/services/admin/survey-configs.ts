@@ -8,7 +8,8 @@ export interface SurveyConfigInput extends Omit<SurveyConfig, 'id'> {
 }
 
 export interface SurveyConfigPageData {
-  courses: Pick<Course, 'id' | 'name' | 'code'>[];
+  courses: Pick<Course, 'id' | 'name' | 'code' | 'departmentId'>[];
+  departments: Pick<Course, 'id' | 'name' | 'code'>[];
   questions: Question[];
   configs: SurveyConfig[];
 }
@@ -74,9 +75,10 @@ async function syncConfigQuestions(surveyConfigId: string, config: SurveyConfigI
 }
 
 export async function fetchSurveyConfigPageData(): Promise<SurveyConfigPageData> {
-  const [questions, coursesResult, configsResult, fixedResult, randomResult] = await Promise.all([
+  const [questions, coursesResult, departmentsResult, configsResult, fixedResult, randomResult] = await Promise.all([
     fetchQuestions(),
-    supabase.from('courses').select('id, name, code').order('name'),
+    supabase.from('courses').select('id, name, code, department_id').order('name'),
+    supabase.from('departments').select('id, name, code').order('name'),
     supabase
       .from('survey_configs')
       .select('id, course_id, name, random_count, active')
@@ -90,6 +92,7 @@ export async function fetchSurveyConfigPageData(): Promise<SurveyConfigPageData>
   ]);
 
   if (coursesResult.error) throw coursesResult.error;
+  if (departmentsResult.error) throw departmentsResult.error;
   if (configsResult.error) throw configsResult.error;
   if (fixedResult.error) throw fixedResult.error;
   if (randomResult.error) throw randomResult.error;
@@ -134,6 +137,12 @@ export async function fetchSurveyConfigPageData(): Promise<SurveyConfigPageData>
       id: course.id,
       name: course.name,
       code: course.code,
+      departmentId: course.department_id,
+    })),
+    departments: (departmentsResult.data ?? []).map((dept) => ({
+      id: dept.id,
+      name: dept.name,
+      code: dept.code,
     })),
     questions,
     configs,

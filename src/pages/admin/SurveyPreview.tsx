@@ -33,11 +33,9 @@ export default function SurveyPreview({ config, questions, courses, onClose }: S
       .map((id) => questions.find((question) => question.id === id))
       .filter(Boolean) as Question[];
 
-    const selectedRandom = shuffleArray(randomPool).slice(0, config.randomPool.count);
-
     return [
       ...fixed.map((question) => ({ ...question, source: 'fixed' as const })),
-      ...selectedRandom.map((question) => ({ ...question, source: 'random' as const })),
+      ...randomPool.map((question) => ({ ...question, source: 'pool' as const })),
     ];
   }, [config, questions]);
 
@@ -45,8 +43,11 @@ export default function SurveyPreview({ config, questions, courses, onClose }: S
     <Dialog open onOpenChange={() => onClose()}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Vista Previa: {config.name}
+          <DialogTitle className="flex flex-col gap-1">
+            <span>Vista Previa: {config.name}</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              (Solo aparecerán {config.fixedQuestionIds.length + config.randomPool.count} preguntas porque {config.randomPool.count} son aleatorias)
+            </span>
           </DialogTitle>
           {course && <p className="text-sm text-muted-foreground">{course.name} ({course.code})</p>}
         </DialogHeader>
@@ -64,11 +65,11 @@ export default function SurveyPreview({ config, questions, courses, onClose }: S
                     {index + 1}. {question.text}
                     {question.required && <span className="ml-1 text-destructive">*</span>}
                   </span>
-                  <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
+                   <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
                     {question.source === 'fixed' ? (
                       <><Pin className="mr-1 h-2.5 w-2.5" /> Fija</>
                     ) : (
-                      <><Shuffle className="mr-1 h-2.5 w-2.5" /> Aleatoria</>
+                      <><Shuffle className="mr-1 h-2.5 w-2.5" /> De Pool Aleatorio</>
                     )}
                   </Badge>
                 </div>
@@ -113,10 +114,10 @@ export default function SurveyPreview({ config, questions, courses, onClose }: S
           </div>
 
           <Separator className="my-4" />
-          <p className="text-center text-xs text-muted-foreground">
+           <p className="text-center text-xs text-muted-foreground">
             {previewQuestions.filter((question) => question.source === 'fixed').length} preguntas fijas
             {' · '}
-            {previewQuestions.filter((question) => question.source === 'random').length} aleatorias (de {config.randomPool.questionIds.length} posibles)
+            Pool de {previewQuestions.filter((question) => question.source === 'pool').length} aleatorias (se mostrarán {config.randomPool.count})
           </p>
         </div>
       </DialogContent>

@@ -59,6 +59,7 @@ function getNavItems(role: AppRole): NavItem[] {
       return [
         { label: 'Mi Dashboard', to: '/profesor', icon: <LayoutDashboard className="h-4 w-4" /> },
         { label: 'Mis Clases', to: '/profesor/clases', icon: <BookOpen className="h-4 w-4" /> },
+        { label: 'Mis Encuestas', to: '/profesor/encuestas', icon: <FileQuestion className="h-4 w-4" /> },
         { label: 'Eventos QR', to: '/profesor/eventos', icon: <QrCode className="h-4 w-4" /> },
       ];
     case 'estudiante':
@@ -71,6 +72,7 @@ function getNavItems(role: AppRole): NavItem[] {
         { label: 'Dashboard', to: '/coordinador', icon: <LayoutDashboard className="h-4 w-4" /> },
         { label: 'Analítica', to: '/coordinador/analitica', icon: <BarChart3 className="h-4 w-4" /> },
       ];
+    case 'director':
       return [
         { label: 'Dashboard', to: '/director', icon: <LayoutDashboard className="h-4 w-4" /> },
         { label: 'Analítica', to: '/director/analitica', icon: <BarChart3 className="h-4 w-4" /> },

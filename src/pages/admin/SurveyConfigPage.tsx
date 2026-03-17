@@ -25,6 +25,7 @@ export default function SurveyConfigPage() {
   const [editConfig, setEditConfig] = useState<Partial<SurveyConfig> | null>(null);
   const [open, setOpen] = useState(false);
   const [previewConfigId, setPreviewConfigId] = useState<string | null>(null);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
 
   const configsQuery = useQuery({
     queryKey: ['admin-survey-config-page'],
@@ -57,8 +58,13 @@ export default function SurveyConfigPage() {
 
   const configs = configsQuery.data?.configs ?? [];
   const courses = configsQuery.data?.courses ?? [];
+  const departments = configsQuery.data?.departments ?? [];
   const questions = configsQuery.data?.questions ?? [];
   const activeQuestions = questions.filter((question) => question.active);
+
+  const filteredCourses = selectedDepartmentId 
+    ? courses.filter(course => course.departmentId === selectedDepartmentId)
+    : courses;
 
   const handleSave = () => {
     if (!editConfig?.courseId || !editConfig?.name?.trim()) {
@@ -67,8 +73,23 @@ export default function SurveyConfigPage() {
     }
 
     const fixedQuestionIds = [...new Set(editConfig.fixedQuestionIds ?? [])];
-    const randomQuestionIds = [...new Set((editConfig.randomPool?.questionIds ?? []).filter((id) => !fixedQuestionIds.includes(id)))];
-    const randomCount = Math.max(0, Math.min(editConfig.randomPool?.count ?? 0, randomQuestionIds.length));
+    const targetTotalCount = Math.max(0, editConfig.randomPool?.count ?? 0);
+
+    if (targetTotalCount > activeQuestions.length) {
+      toast.error(`No puedes configurar ${targetTotalCount} preguntas porque solo hay ${activeQuestions.length} preguntas activas en el banco.`);
+      return;
+    }
+
+    if (targetTotalCount < fixedQuestionIds.length) {
+      toast.error(`Has marcado ${fixedQuestionIds.length} preguntas como fijas. El total de preguntas a mostrar debe ser al menos ${fixedQuestionIds.length}.`);
+      return;
+    }
+
+    const randomQuestionIds = activeQuestions
+      .filter((q) => !fixedQuestionIds.includes(q.id))
+      .map((q) => q.id);
+    
+    const randomCount = targetTotalCount - fixedQuestionIds.length;
 
     upsertMutation.mutate({
       id: editConfig.id,
@@ -92,41 +113,14 @@ export default function SurveyConfigPage() {
       const nextFixedIds = fixedIds.includes(questionId)
         ? fixedIds.filter((id) => id !== questionId)
         : [...fixedIds, questionId];
-      const nextRandomIds = currentRandomPool.questionIds.filter((id) => id !== questionId);
 
       return {
         ...previous,
         fixedQuestionIds: nextFixedIds,
-        randomPool: {
-          questionIds: nextRandomIds,
-          count: Math.min(currentRandomPool.count, nextRandomIds.length),
-        },
       };
     });
   };
 
-  const toggleRandom = (questionId: string) => {
-    setEditConfig((previous) => {
-      if (!previous) return previous;
-
-      const fixedIds = previous.fixedQuestionIds ?? [];
-      const currentRandomPool = previous.randomPool ?? { questionIds: [], count: 0 };
-      const randomIds = currentRandomPool.questionIds;
-      const nextRandomIds = randomIds.includes(questionId)
-        ? randomIds.filter((id) => id !== questionId)
-        : [...randomIds, questionId];
-      const nextFixedIds = fixedIds.filter((id) => id !== questionId);
-
-      return {
-        ...previous,
-        fixedQuestionIds: nextFixedIds,
-        randomPool: {
-          questionIds: nextRandomIds,
-          count: Math.min(currentRandomPool.count, nextRandomIds.length),
-        },
-      };
-    });
-  };
 
   const getCourseName = (courseId: string) => courses.find((course) => course.id === courseId)?.name || courseId;
 
@@ -136,6 +130,7 @@ export default function SurveyConfigPage() {
       randomPool: { questionIds: [], count: 0 },
       active: true,
     });
+    setSelectedDepartmentId(null);
     setOpen(true);
   };
 
@@ -166,14 +161,26 @@ export default function SurveyConfigPage() {
                   <CardTitle className="text-base">{config.name}</CardTitle>
                   <p className="mt-0.5 text-sm text-muted-foreground">{getCourseName(config.courseId)}</p>
                 </div>
-                <Badge variant={config.active ? 'default' : 'secondary'}>
-                  {config.active ? 'Activa' : 'Inactiva'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={config.active}
+                    onCheckedChange={(checked) => {
+                      upsertMutation.mutate({
+                        ...config,
+                        active: checked,
+                      });
+                    }}
+                  />
+                  <Badge variant={config.active ? 'default' : 'secondary'}>
+                    {config.active ? 'Activa' : 'Inactiva'}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1"><Pin className="h-3 w-3" /> {config.fixedQuestionIds.length} fijas</span>
-                  <span className="flex items-center gap-1"><Shuffle className="h-3 w-3" /> {config.randomPool.count} de {config.randomPool.questionIds.length} aleatorias</span>
+                  <span className="flex items-center gap-1"><Shuffle className="h-3 w-3" /> {config.randomPool.count} aleatorias</span>
+                  <span className="font-semibold text-primary">· {config.fixedQuestionIds.length + config.randomPool.count} total</span>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => { setEditConfig(config); setOpen(true); }}>
@@ -209,8 +216,23 @@ export default function SurveyConfigPage() {
             <DialogTitle>{editConfig?.id ? 'Editar' : 'Nueva'} Encuesta</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 pt-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-1">
+                <Label>Departamento</Label>
+                <Select
+                  value={selectedDepartmentId || 'all'}
+                  onValueChange={(value) => setSelectedDepartmentId(value === 'all' ? null : value)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Filtrar por" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-1">
                 <Label>Nombre</Label>
                 <Input
                   value={editConfig?.name || ''}
@@ -218,7 +240,7 @@ export default function SurveyConfigPage() {
                   placeholder="Encuesta semestral"
                 />
               </div>
-              <div>
+              <div className="col-span-1">
                 <Label>Clase</Label>
                 <Select
                   value={editConfig?.courseId || ''}
@@ -226,7 +248,7 @@ export default function SurveyConfigPage() {
                 >
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
-                    {courses.map((course) => (
+                    {filteredCourses.map((course) => (
                       <SelectItem key={course.id} value={course.id}>{course.name} ({course.code})</SelectItem>
                     ))}
                   </SelectContent>
@@ -235,33 +257,36 @@ export default function SurveyConfigPage() {
             </div>
 
             <div>
-              <Label>Preguntas aleatorias a mostrar</Label>
+              <Label>Total de preguntas a mostrar (fijas + aleatorias)</Label>
               <Input
                 type="number"
                 min={0}
-                value={editConfig?.randomPool?.count || 0}
+                value={(editConfig?.randomPool?.count || 0) + (editConfig?.fixedQuestionIds?.length || 0)}
                 onChange={(event) => {
-                  const count = Number(event.target.value);
+                  const total = Number(event.target.value);
                   setEditConfig((previous) => {
                     if (!previous) return previous;
-                    const randomPool = previous.randomPool ?? { questionIds: [], count: 0 };
+                    const fixedCount = previous.fixedQuestionIds?.length || 0;
                     return {
                       ...previous,
                       randomPool: {
-                        ...randomPool,
-                        count: Number.isNaN(count) ? 0 : count,
+                        questionIds: previous.randomPool?.questionIds || [],
+                        count: Math.max(0, (Number.isNaN(total) ? 0 : total)),
                       },
                     };
                   });
                 }}
                 className="w-24"
               />
-              <p className="mt-1 text-xs text-muted-foreground">Cantidad de preguntas aleatorias que se seleccionarán del pool</p>
+              <p className="mt-1 text-xs text-muted-foreground">El sistema completará con preguntas aleatorias si el total es mayor a las preguntas fijas seleccionadas</p>
             </div>
 
             <div>
-              <Label className="mb-3 block">Seleccionar preguntas</Label>
-              <div className="space-y-2 rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <Label>Seleccionar preguntas</Label>
+                <span className="text-xs text-muted-foreground italic">(las preguntas no marcadas fijas seran de aparicion aleatoria)</span>
+              </div>
+              <div className="mt-3 space-y-2 rounded-lg border p-3">
                 {activeQuestions.map((question) => {
                   const isFixed = editConfig?.fixedQuestionIds?.includes(question.id);
                   const isRandom = editConfig?.randomPool?.questionIds?.includes(question.id);
@@ -284,14 +309,6 @@ export default function SurveyConfigPage() {
                         >
                           <Pin className="mr-1 h-3 w-3" /> Fija
                         </Button>
-                        <Button
-                          variant={isRandom ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => toggleRandom(question.id)}
-                          className="h-7 text-xs"
-                        >
-                          <Shuffle className="mr-1 h-3 w-3" /> Aleatoria
-                        </Button>
                       </div>
                     </div>
                   );
@@ -299,13 +316,6 @@ export default function SurveyConfigPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={editConfig?.active ?? true}
-                onCheckedChange={(checked) => setEditConfig((previous) => ({ ...previous, active: checked }))}
-              />
-              <Label>Encuesta activa</Label>
-            </div>
 
             <Button onClick={handleSave} className="w-full" disabled={upsertMutation.isPending}>
               {upsertMutation.isPending ? (
